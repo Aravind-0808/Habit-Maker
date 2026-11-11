@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Habit Maker</string>
+    <string name="blocker_label">Habit Maker blocker</string>
+    <string name="blocker_description">Habit Maker uses this service to see which app is open, so it can block the apps, short videos and websites you chose. It does not read or collect anything else, and nothing leaves your phone.</string>
+    <string name="widget_today_desc">Screen time, focus and habits for today</string>
+    <string name="widget_focus_desc">Start a focus session with one tap</string>
+    <string name="widget_habits_desc">Today\'s habits — tap to tick them off</string>
+    <string name="widget_calendar_desc">Your habits over the last 4 weeks</string>
+</resources>
