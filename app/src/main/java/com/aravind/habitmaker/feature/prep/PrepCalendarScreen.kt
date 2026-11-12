@@ -136,7 +136,7 @@ fun PrepCalendarScreen(onBack: () -> Unit) {
 private fun DayCell(d: LocalDate, s: DayStatus, isToday: Boolean) {
     val c = MaterialTheme.colors
     val (bg, fg) = when (s) {
-        DayStatus.DONE -> c.success to Color.White
+        DayStatus.DONE -> c.success to c.onPrimary
         DayStatus.MISSED -> c.dangerSoft to c.danger
         else -> Color.Transparent to (if (d.isAfter(LocalDate.now())) c.faint else c.foreground)
     }

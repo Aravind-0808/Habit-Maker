@@ -34,15 +34,17 @@ import androidx.compose.ui.unit.dp
 import com.aravind.habitmaker.core.focus.FocusRun
 import com.aravind.habitmaker.core.util.formatMinutes
 import com.aravind.habitmaker.core.util.formatTimer
+import com.aravind.habitmaker.ui.theme.colors
 import com.aravind.habitmaker.ui.components.AppButton
 
 /** High-contrast daily focus anchor; its ring always represents real completed focus time. */
 @Composable
 internal fun HomeFocusHero(focusMin: Int, goalMin: Int, run: FocusRun?, now: Long, sessionMin: Int, onFocus: () -> Unit) {
-    val mint = Color(0xFF91F4BC)
+    val c = MaterialTheme.colors
+    val mint = c.onHero
     val progress = (focusMin.toFloat() / goalMin.coerceAtLeast(1)).coerceIn(0f, 1f)
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
-        .background(Brush.linearGradient(listOf(Color(0xFF123F34), Color(0xFF082B27))))) {
+        .background(Brush.linearGradient(listOf(c.heroStart, c.heroEnd)))) {
         Canvas(Modifier.matchParentSize()) {
             drawCircle(mint.copy(alpha = 0.035f), size.width * 0.48f, Offset(size.width * 0.95f, 0f))
             drawCircle(mint.copy(alpha = 0.07f), size.width * 0.34f, Offset(size.width * 0.95f, 0f), style = Stroke(1.dp.toPx()))
@@ -52,21 +54,21 @@ internal fun HomeFocusHero(focusMin: Int, goalMin: Int, run: FocusRun?, now: Lon
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(if (run == null) formatMinutes(focusMin) else formatTimer(run.remainingMs(now) / 1000),
-                        style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = Color.White)
+                        style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = c.onHero)
                     Text(if (run != null) "${if (run.paused) "Paused" else if (run.isBreak) "Break" else "Focusing"} · ${run.label}" else "of ${formatMinutes(goalMin)} daily goal",
-                        style = MaterialTheme.typography.bodySmall, color = Color(0xFFC6DDD5))
+                        style = MaterialTheme.typography.bodySmall, color = c.onHero.copy(alpha = 0.8f))
                 }
                 Box(Modifier.size(82.dp).semantics { contentDescription = "${(progress * 100).toInt()} percent of daily focus goal complete" }, contentAlignment = Alignment.Center) {
                     Canvas(Modifier.fillMaxSize()) {
                         val stroke = 7.dp.toPx()
                         val inset = stroke / 2
                         val arc = Size(size.width - stroke, size.height - stroke)
-                        drawArc(Color.White.copy(alpha = 0.12f), -90f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
+                        drawArc(c.onHero.copy(alpha = 0.12f), -90f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
                         drawArc(mint, -90f, 360f * progress, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("of goal", style = MaterialTheme.typography.labelSmall, color = Color(0xFFC6DDD5))
+                        Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = c.onHero)
+                        Text("of goal", style = MaterialTheme.typography.labelSmall, color = c.onHero.copy(alpha = 0.8f))
                     }
                 }
             }

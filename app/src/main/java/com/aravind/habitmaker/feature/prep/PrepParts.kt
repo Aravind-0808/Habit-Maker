@@ -118,12 +118,5 @@ fun BlockType.icon(): ImageVector = when (this) {
 @Composable
 fun BlockType.tint(): Color {
     val c = MaterialTheme.colors
-    return when (this) {
-        BlockType.WAKE -> c.warning
-        BlockType.STUDY, BlockType.REVISION, BlockType.MOCK_TEST -> Violet
-        BlockType.BREAK, BlockType.MEAL -> Emerald
-        BlockType.SLEEP -> Blue
-        BlockType.EXERCISE -> c.danger
-        else -> c.muted
-    }
+    return c.primary
 }

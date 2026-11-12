@@ -94,6 +94,8 @@
                 android:value="User-started focus (Pomodoro) countdown timer" />
         </service>
 
+        <receiver android:name=".core.reminders.HabitNotificationActionReceiver" android:exported="false" />
+
         <receiver
             android:name=".core.reminders.ReminderReceiver"
             android:exported="false" />

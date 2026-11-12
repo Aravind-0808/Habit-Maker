@@ -59,7 +59,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.auth.AuthState
 import com.aravind.habitmaker.core.prefs.Settings
-import com.aravind.habitmaker.core.prefs.ThemeMode
 import com.aravind.habitmaker.core.prefs.TimeFormat
 import com.aravind.habitmaker.core.reminders.HabitReminders
 import com.aravind.habitmaker.core.util.formatMinutes
@@ -164,9 +163,22 @@ fun ProfileScreen(onBack: () -> Unit, go: (String) -> Unit) {
 
         Column {
             SectionLabel("Appearance")
-            Segmented(listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark"), s.theme, { m -> set { it.copy(theme = m) } })
             Spacer(Modifier.height(12.dp))
-            AccentPicker(s.accent) { a -> set { it.copy(accent = a) } }
+            ColorPairPicker(s.primaryColor, s.secondaryColor) { pair -> set { it.copy(primaryColor = pair.background, secondaryColor = pair.components) } }
+            Spacer(Modifier.height(16.dp))
+            ThemeColorPicker("Primary · background", "The full background across the app.", s.accent, s.primaryColor,
+                onPreset = { a -> set { it.copy(accent = a, primaryColor = null) } },
+                onCustom = { color -> set { it.copy(primaryColor = color) } }, background = true)
+            Spacer(Modifier.height(12.dp))
+            SecondarySuggestions(s.secondaryColor) { color -> set { it.copy(secondaryColor = color) } }
+            Spacer(Modifier.height(12.dp))
+            ThemeColorPicker("Secondary · components", "Buttons, icons, graphs and the color of cards inside the app.", s.secondaryAccent, s.secondaryColor,
+                onPreset = { a -> set { it.copy(secondaryAccent = a, secondaryColor = null) } },
+                onCustom = { color -> set { it.copy(secondaryColor = color) } })
+            Text("Background stays exactly as selected. Component shades adjust for readable contrast.", style = MaterialTheme.typography.bodySmall, color = c.muted)
+            TextButton({ set { it.copy(accent = Accent.ZINC, secondaryAccent = Accent.VIOLET, primaryColor = null, secondaryColor = null) } }) {
+                Text("Reset colors", color = c.primary)
+            }
             Spacer(Modifier.height(16.dp))
             Text("Time format", style = MaterialTheme.typography.labelMedium, color = c.muted)
             Spacer(Modifier.height(6.dp))
@@ -263,25 +275,4 @@ private fun TextDialog(title: String, value: String, onDismiss: () -> Unit, onSa
         confirmButton = { TextButton({ if (t.isNotBlank()) { onSave(t.trim()); onDismiss() } }) { Text("Save", color = c.foreground, fontWeight = FontWeight.SemiBold) } },
         dismissButton = { TextButton(onDismiss) { Text("Cancel", color = c.muted) } },
     )
-}
-
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-@Composable
-private fun AccentPicker(selected: Accent, onPick: (Accent) -> Unit) {
-    val c = MaterialTheme.colors
-    androidx.compose.foundation.layout.FlowRow(
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-    ) {
-        Accent.entries.forEach { a ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onPick(a) }) {
-                Box(
-                    Modifier.size(36.dp).clip(CircleShape).background(if (c.isDark) a.dark else a.light)
-                        .border(3.dp, if (a == selected) c.foreground else Color.Transparent, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) { if (a == selected) Icon(Icons.Filled.Check, null, tint = if (c.isDark) Color(0xFF09090B) else Color.White, modifier = Modifier.size(18.dp)) }
-                Text(a.label, style = MaterialTheme.typography.labelMedium, color = c.muted)
-            }
-        }
-    }
 }

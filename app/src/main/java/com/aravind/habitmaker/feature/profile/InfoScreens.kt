@@ -102,7 +102,7 @@ fun PremiumScreen(onBack: () -> Unit) {
     val c = MaterialTheme.colors
     ScrollScreen("All features", onBack = onBack) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            IconTile(Icons.Filled.Star, Amber, 64.dp)
+            IconTile(Icons.Filled.Star, c.primary, 64.dp)
             Spacer(Modifier.height(12.dp))
             Text("Everything is free", style = MaterialTheme.typography.headlineSmall, color = c.foreground)
             Text("No ads, no subscription. Every feature is unlocked.", style = MaterialTheme.typography.bodyMedium, color = c.muted)

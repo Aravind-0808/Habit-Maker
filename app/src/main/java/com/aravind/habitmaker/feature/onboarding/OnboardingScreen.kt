@@ -79,11 +79,11 @@ fun OnboardingScreen(onDone: (Goal, Int) -> Unit) {
             ) {
                 when (page) {
                     0 -> Intro(
-                        null, Emerald, "Welcome to Habit Maker",
+                        null, c.primary, "Welcome to Habit Maker",
                         "Build good habits, focus deeply and use your phone with intention.",
                     )
                     1 -> {
-                        Intro(Icons.Filled.Flag, Blue, "What's your main goal?", "We'll shape the app around it.")
+                        Intro(Icons.Filled.Flag, c.primary, "What's your main goal?", "We'll shape the app around it.")
                         Spacer(Modifier.height(24.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Goal.entries.forEach { g ->
@@ -94,7 +94,7 @@ fun OnboardingScreen(onDone: (Goal, Int) -> Unit) {
                         }
                     }
                     2 -> {
-                        Intro(Icons.Filled.Timer, Violet, "Daily screen-time target", "How much phone time a day feels right to you?")
+                        Intro(Icons.Filled.Timer, c.primary, "Daily screen-time target", "How much phone time a day feels right to you?")
                         Spacer(Modifier.height(32.dp))
                         Text(formatMinutes(target), style = MaterialTheme.typography.headlineMedium, color = c.foreground)
                         Spacer(Modifier.height(8.dp))
@@ -105,7 +105,7 @@ fun OnboardingScreen(onDone: (Goal, Int) -> Unit) {
                         )
                     }
                     else -> {
-                        Intro(Icons.Filled.CheckCircle, Rose, "You're all set", "Here's what Habit Maker does for you:")
+                        Intro(Icons.Filled.CheckCircle, c.primary, "You're all set", "Here's what Habit Maker does for you:")
                         Spacer(Modifier.height(24.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             Feature(Icons.Filled.CheckCircle, "Track daily habits and streaks")

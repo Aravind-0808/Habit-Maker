@@ -202,7 +202,7 @@ fun AppCard(
             .fillMaxWidth()
             .clip(shape)
             .background(if (elevated) c.surfaceElevated else c.surface)
-            .border(1.dp, borderColor ?: c.border, shape)
+            .then(if (borderColor != null) Modifier.border(1.dp, borderColor, shape) else Modifier)
             .then(if (onClick != null) Modifier.bouncyClickable(onClick = onClick) else Modifier)
             .padding(padding),
         content = content,
@@ -402,7 +402,7 @@ fun MenuRow(icon: ImageVector, label: String, onClick: (() -> Unit)?, trailing: 
 val ScreenPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
 
 @Composable
-fun Divider() { Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colors.border)) }
+fun Divider() { Box(Modifier.fillMaxWidth().height(0.5.dp).background(MaterialTheme.colors.border.copy(alpha = 0.35f))) }
 
 /** The Habit Maker brand logo (rounded-square artwork). */
 @Composable

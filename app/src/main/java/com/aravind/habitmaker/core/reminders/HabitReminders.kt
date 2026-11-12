@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.net.toUri
+import com.aravind.habitmaker.core.notifications.notificationAccent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -103,7 +105,7 @@ class ReminderReceiver : BroadcastReceiver() {
                     return@launch
                 }
                 val done = app.db.habitLogs().forDay(Dates.today()).firstOrNull { it.habitId == id }?.count ?: 0
-                if (done < habit.target) notify(context, habit)
+                if (done < habit.target) showHabitReminder(context, habit, done)
                 HabitReminders.schedule(context, habit)
             } finally {
                 pending.finish()
@@ -111,27 +113,34 @@ class ReminderReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun notify(context: Context, habit: Habit) {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
-        val open = PendingIntent.getActivity(
-            context, 0, Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val n = NotificationCompat.Builder(context, App.CHANNEL_REMINDERS)
-            .setSmallIcon(R.drawable.ic_stat_habit)
-            .setContentTitle(habit.name)
-            .setContentText(when {
-                habit.timing == "WINDOW" && habit.endMinute != null -> "Your time: ${formatClock(habit.startMinute ?: habit.reminderMinute ?: 0)} – ${formatClock(habit.endMinute)}."
-                habit.timing == "REPEAT" -> "Time for your next check-in. Log it in Habit Maker."
-                else -> "Time for your habit. Keep the streak going!"
-            })
-            .setContentIntent(open)
-            .setAutoCancel(true)
-            .build()
-        NotificationManagerCompat.from(context).notify(1000 + habit.id.toInt(), n)
+}
+
+internal suspend fun showHabitReminder(context: Context, habit: Habit, count: Int, silent: Boolean = false) {
+    if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+    val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    val day = Dates.today()
+    val checkIn = PendingIntent.getBroadcast(context, 0,
+        Intent(context, HabitNotificationActionReceiver::class.java)
+            .setData("habitmaker://habit/${habit.id}/$day/$count".toUri())
+            .putExtra("habit_id", habit.id).putExtra("day", day).putExtra("expected_count", count),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    val detail = when {
+        habit.timing == "WINDOW" && habit.endMinute != null -> "${formatClock(habit.startMinute ?: habit.reminderMinute ?: 0)} – ${formatClock(habit.endMinute)} · Your planned time"
+        habit.timing == "REPEAT" -> "$count of ${habit.target} check-ins today · Every ${habit.intervalMin} min"
+        else -> "A small step for today. Check it off when you're done."
     }
+    val n = NotificationCompat.Builder(context, App.CHANNEL_REMINDERS)
+        .setSmallIcon(R.drawable.ic_stat_habit).setColor(notificationAccent(context))
+        .setContentTitle(habit.name).setContentText(detail)
+        .setSubText(if (habit.target > 1) "Daily habit · $count/${habit.target}" else "Habit reminder")
+        .setCategory(NotificationCompat.CATEGORY_REMINDER)
+        .setStyle(NotificationCompat.BigTextStyle().bigText(detail))
+        .setContentIntent(open).setAutoCancel(true).setOnlyAlertOnce(silent).setSilent(silent)
+        .addAction(0, if (habit.target > 1) "Log a check-in" else "Mark done", checkIn)
+        .addAction(0, "Open app", open)
+    if (habit.target > 1) n.setProgress(habit.target, count.coerceIn(0, habit.target), false)
+    NotificationManagerCompat.from(context).notify(1000 + habit.id.toInt(), n.build())
 }
 
 /** Alarms are cleared on reboot and app update; put them back. */

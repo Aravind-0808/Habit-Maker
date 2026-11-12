@@ -64,6 +64,9 @@ data class PromptInfo(
     val inApp: Boolean,
     val theme: ThemeMode,
     val accent: Accent,
+    val secondaryAccent: Accent = Accent.VIOLET,
+    val primaryColor: Long? = null,
+    val secondaryColor: Long? = null,
 )
 
 /**
@@ -86,7 +89,7 @@ class BlockPrompt(private val service: AccessibilityService) {
         hide()
         val o = OverlayOwner().also { it.start() }
         val compose = ComposeView(service).apply {
-            setContent { HabitMakerTheme(info.theme, info.accent) { Prompt(info, onLeave, onSnooze) } }
+            setContent { HabitMakerTheme(info.theme, info.accent, info.secondaryAccent, info.primaryColor, info.secondaryColor) { Prompt(info, onLeave, onSnooze) } }
         }
         // Back key = leave.
         val root = object : FrameLayout(service) {

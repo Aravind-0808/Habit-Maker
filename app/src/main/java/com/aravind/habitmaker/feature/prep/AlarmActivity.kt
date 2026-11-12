@@ -69,7 +69,7 @@ class AlarmActivity : ComponentActivity() {
             // Give the service a moment to start, then close once it's not ringing.
             LaunchedEffect(ring) { if (ring == null) { delay(1500); if (AlarmService.ringing.value == null) finish() } }
 
-            HabitMakerTheme(s.theme, s.accent) {
+            HabitMakerTheme(s.theme, s.accent, s.secondaryAccent, s.primaryColor, s.secondaryColor) {
                 val c = MaterialTheme.colors
                 Column(
                     Modifier.fillMaxSize().background(c.background).systemBarsPadding().padding(32.dp),

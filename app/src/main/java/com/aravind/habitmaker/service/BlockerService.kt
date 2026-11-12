@@ -256,7 +256,7 @@ class BlockerService : AccessibilityService() {
         if (leftAlready) performGlobalAction(GLOBAL_ACTION_BACK)
 
         val show = { prompt.show(
-            PromptInfo(pkg, app.apps.label(pkg), reason, detail, s.overlayMessage, strict, inApp, s.theme, s.accent),
+            PromptInfo(pkg, app.apps.label(pkg), reason, detail, s.overlayMessage, strict, inApp, s.theme, s.accent, s.secondaryAccent, s.primaryColor, s.secondaryColor),
             onLeave = {
                 prompt.hide()
                 lastBlockAt = SystemClock.elapsedRealtime()

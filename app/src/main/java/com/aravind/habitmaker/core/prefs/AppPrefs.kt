@@ -21,6 +21,9 @@ enum class Goal(val label: String) { STUDY("Study better"), WORK("Focus at work"
 data class Settings(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val accent: Accent = Accent.ZINC,
+    val secondaryAccent: Accent = Accent.VIOLET,
+    val primaryColor: Long? = null,
+    val secondaryColor: Long? = null,
     val timeFormat: TimeFormat = TimeFormat.SYSTEM,
     val onboardingDone: Boolean = false,
     val permissionsSeen: Boolean = false,
@@ -73,6 +76,9 @@ class AppPrefs(private val context: Context) {
     private fun Preferences.toSettings() = Settings(
         theme = this[THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: ThemeMode.SYSTEM,
         accent = this[ACCENT]?.let { runCatching { Accent.valueOf(it) }.getOrNull() } ?: Accent.ZINC,
+        secondaryAccent = this[SECONDARY_ACCENT]?.let { runCatching { Accent.valueOf(it) }.getOrNull() } ?: Accent.VIOLET,
+        primaryColor = this[PRIMARY_COLOR],
+        secondaryColor = this[SECONDARY_COLOR],
         timeFormat = this[TIME_FORMAT]?.let { runCatching { TimeFormat.valueOf(it) }.getOrNull() } ?: TimeFormat.SYSTEM,
         onboardingDone = this[ONBOARDING_DONE] ?: false,
         permissionsSeen = this[PERMISSIONS_SEEN] ?: false,
@@ -99,6 +105,9 @@ class AppPrefs(private val context: Context) {
     private fun MutablePreferences.write(s: Settings) {
         this[THEME] = s.theme.name
         this[ACCENT] = s.accent.name
+        this[SECONDARY_ACCENT] = s.secondaryAccent.name
+        if (s.primaryColor == null) remove(PRIMARY_COLOR) else this[PRIMARY_COLOR] = s.primaryColor
+        if (s.secondaryColor == null) remove(SECONDARY_COLOR) else this[SECONDARY_COLOR] = s.secondaryColor
         this[TIME_FORMAT] = s.timeFormat.name
         this[ONBOARDING_DONE] = s.onboardingDone
         this[PERMISSIONS_SEEN] = s.permissionsSeen
@@ -125,6 +134,9 @@ class AppPrefs(private val context: Context) {
     private companion object {
         val THEME = stringPreferencesKey("theme")
         val ACCENT = stringPreferencesKey("accent")
+        val SECONDARY_ACCENT = stringPreferencesKey("secondary_accent")
+        val PRIMARY_COLOR = longPreferencesKey("primary_color")
+        val SECONDARY_COLOR = longPreferencesKey("secondary_color")
         val TIME_FORMAT = stringPreferencesKey("time_format")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val PERMISSIONS_SEEN = booleanPreferencesKey("permissions_seen")

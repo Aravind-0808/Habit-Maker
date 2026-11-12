@@ -65,7 +65,7 @@ fun HabitDetailScreen(habitId: Long, onBack: () -> Unit, go: (String) -> Unit) {
 
     val habit = habitState ?: run { ScrollScreen("Habit", onBack = onBack) { LoadingState() }; return }
     val logs = loadedLogs ?: run { ScrollScreen(habit.name, onBack = onBack) { LoadingState() }; return }
-    val tint = Color(habit.color)
+    val tint = c.primary
     val counts = logs.associate { it.day to it.count }
     val info = habit.streak(logs, today)
 
@@ -114,7 +114,7 @@ fun HabitDetailScreen(habitId: Long, onBack: () -> Unit, go: (String) -> Unit) {
                                     .clickable { scope.launch { HabitActions.tap(context, habit, d.toEpochDay()) } },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("${d.dayOfMonth}", style = MaterialTheme.typography.labelLarge, color = if (done) Color.White else c.muted)
+                                Text("${d.dayOfMonth}", style = MaterialTheme.typography.labelLarge, color = if (done) c.onPrimary else c.muted)
                             }
                         }
                     }

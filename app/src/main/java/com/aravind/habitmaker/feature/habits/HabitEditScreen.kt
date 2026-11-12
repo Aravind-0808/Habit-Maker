@@ -226,24 +226,11 @@ fun HabitEditScreen(habitId: Long, onBack: () -> Unit, onSaved: () -> Unit) {
                     val on = key == icon
                     Box(
                         Modifier.size(44.dp).clip(MaterialTheme.shapes.medium)
-                            .background(if (on) Color(color).copy(alpha = 0.18f) else c.sunken)
-                            .border(2.dp, if (on) Color(color) else Color.Transparent, MaterialTheme.shapes.medium)
+                            .background(if (on) c.primarySoft else c.sunken)
+                            .border(2.dp, if (on) c.primary else Color.Transparent, MaterialTheme.shapes.medium)
                             .clickable { icon = key },
                         contentAlignment = Alignment.Center,
-                    ) { Icon(vector, key, tint = if (on) Color(color) else c.muted) }
-                }
-            }
-        }
-
-        Column {
-            SectionLabel("Colour")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                HabitColors.forEach { col ->
-                    Box(
-                        Modifier.size(32.dp).clip(CircleShape).background(Color(col))
-                            .border(3.dp, if (col == color) c.foreground else Color.Transparent, CircleShape)
-                            .clickable { color = col },
-                    )
+                    ) { Icon(vector, key, tint = if (on) c.primary else c.muted) }
                 }
             }
         }

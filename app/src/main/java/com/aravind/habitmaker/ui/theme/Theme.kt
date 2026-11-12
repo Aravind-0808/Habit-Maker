@@ -12,6 +12,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -97,13 +99,60 @@ enum class Accent(val label: String, val light: Color, val lightEnd: Color, val 
     AMBER("Streak Amber", Color(0xFFD97706), Color(0xFFB45309), Color(0xFFFBBF24), Color(0xFFF59E0B)),
 }
 
-private fun AppColors.withAccent(a: Accent): AppColors = if (a == Accent.ZINC || a == Accent.EMERALD) this else if (isDark) copy(
-    primary = a.dark, primarySoft = a.dark.copy(alpha = 0.15f), onPrimary = if (a == Accent.SLATE) Color(0xFF09090B) else Color(0xFF003824),
-    heroStart = a.dark, heroEnd = a.darkEnd, onHero = Color(0xFF09090B),
-) else copy(
-    primary = a.light, primarySoft = a.light.copy(alpha = 0.1f), onPrimary = Color.White,
-    heroStart = a.light, heroEnd = a.lightEnd, onHero = Color.White,
-)
+/** Pick black or white text using the larger contrast ratio. */
+internal fun onAccent(color: Color): Color = if (color.luminance() > 0.179f) Color.Black else Color.White
+
+internal fun parseHexColor(value: String): Long? {
+    val hex = value.trim().removePrefix("#")
+    if (!Regex("[0-9a-fA-F]{6}").matches(hex)) return null
+    return hex.toLong(16) or 0xFF000000L
+}
+
+/** Keep custom accent text visible against the current theme's surface. */
+private fun readableAccent(color: Color, background: Color): Color {
+    fun ratio(a: Color, b: Color): Float {
+        val x = a.luminance(); val y = b.luminance()
+        return (maxOf(x, y) + 0.05f) / (minOf(x, y) + 0.05f)
+    }
+    if (ratio(color, background) >= 4.5f) return color
+    val target = if (background.luminance() > 0.179f) Color.Black else Color.White
+    for (step in 1..100) {
+        val adjusted = lerp(color, target, step / 100f)
+        if (ratio(adjusted, background) >= 4.5f) return adjusted
+    }
+    return target
+}
+
+internal fun resolveAppColors(dark: Boolean, accent: Accent, secondaryAccent: Accent = Accent.VIOLET,
+    primaryColor: Long? = null, secondaryColor: Long? = null): AppColors {
+    val chosenBackground = primaryColor?.let { Color(it) } ?: if (accent == Accent.ZINC) null else accent.light
+    val effectiveDark = chosenBackground?.let { it.luminance() < 0.179f } ?: dark
+    val base = if (effectiveDark) Dark else Light
+    val background = chosenBackground ?: base.background
+    val foreground = onAccent(background)
+    val requestedSecondary = secondaryColor?.let { Color(it) }
+        ?: if (effectiveDark) secondaryAccent.dark else secondaryAccent.light
+    val surface = lerp(background, requestedSecondary, if (effectiveDark) 0.10f else 0.035f)
+    val component = readableAccent(requestedSecondary, surface)
+    val border = lerp(surface, foreground, 0.18f)
+    val success = component
+    val warning = component
+    val danger = component
+    return base.copy(
+        background = background, foreground = foreground,
+        surface = surface, surfaceElevated = lerp(background, component, 0.09f),
+        subtle = lerp(background, component, 0.04f), sunken = lerp(background, component, 0.12f),
+        border = border, borderStrong = lerp(surface, foreground, 0.32f),
+        muted = lerp(foreground, background, 0.22f), faint = lerp(foreground, background, 0.35f),
+        primary = component, primarySoft = component.copy(alpha = if (effectiveDark) 0.18f else 0.10f), onPrimary = onAccent(component),
+        secondary = component, onSecondary = onAccent(component),
+        success = success, successSoft = success.copy(alpha = 0.12f),
+        warning = warning, warningSoft = warning.copy(alpha = 0.12f),
+        danger = danger, dangerSoft = danger.copy(alpha = 0.12f), info = component, infoSoft = component.copy(alpha = 0.12f),
+        heroStart = lerp(background, component, 0.18f), heroEnd = lerp(background, component, 0.07f), onHero = foreground,
+        isDark = effectiveDark,
+    )
+}
 
 val LocalAppColors = staticCompositionLocalOf { Light }
 
@@ -133,24 +182,26 @@ private val AppShapes = Shapes(
 )
 
 @Composable
-fun HabitMakerTheme(mode: ThemeMode = ThemeMode.SYSTEM, accent: Accent = Accent.ZINC, content: @Composable () -> Unit) {
+fun HabitMakerTheme(mode: ThemeMode = ThemeMode.SYSTEM, accent: Accent = Accent.ZINC,
+    secondaryAccent: Accent = Accent.VIOLET, primaryColor: Long? = null, secondaryColor: Long? = null,
+    content: @Composable () -> Unit) {
     val dark = when (mode) {
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val c = (if (dark) Dark else Light).withAccent(accent)
-    val scheme = if (dark) darkColorScheme(
-        primary = c.primary, onPrimary = c.onPrimary, background = c.background, onBackground = c.foreground,
+    val c = resolveAppColors(dark, accent, secondaryAccent, primaryColor, secondaryColor)
+    val scheme = if (c.isDark) darkColorScheme(
+        primary = c.primary, onPrimary = c.onPrimary, secondary = c.secondary, onSecondary = c.onSecondary, background = c.background, onBackground = c.foreground,
         surface = c.surface, onSurface = c.foreground, surfaceVariant = c.sunken, onSurfaceVariant = c.muted,
         outline = c.border, outlineVariant = c.border, error = c.danger, secondaryContainer = c.sunken,
         onSecondaryContainer = c.foreground, surfaceContainer = c.subtle, surfaceContainerHigh = c.subtle,
         surfaceContainerLow = c.background, surfaceContainerHighest = c.sunken,
     ) else lightColorScheme(
-        primary = c.primary, onPrimary = c.onPrimary, background = c.background, onBackground = c.foreground,
+        primary = c.primary, onPrimary = c.onPrimary, secondary = c.secondary, onSecondary = c.onSecondary, background = c.background, onBackground = c.foreground,
         surface = c.surface, onSurface = c.foreground, surfaceVariant = c.sunken, onSurfaceVariant = c.muted,
         outline = c.border, outlineVariant = c.border, error = c.danger, secondaryContainer = c.sunken,
-        onSecondaryContainer = c.foreground, surfaceContainer = c.subtle, surfaceContainerHigh = Color.White,
+        onSecondaryContainer = c.foreground, surfaceContainer = c.subtle, surfaceContainerHigh = c.surfaceElevated,
         surfaceContainerLow = c.background, surfaceContainerHighest = c.sunken,
     )
     CompositionLocalProvider(LocalAppColors provides c) {

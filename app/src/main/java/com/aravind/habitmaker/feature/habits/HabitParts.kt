@@ -112,7 +112,7 @@ fun Habit.streak(logs: List<HabitLog>, today: LocalDate = LocalDate.now()): Stre
 @Composable
 fun HabitRow(habit: Habit, count: Int, subtitle: String, onCheck: () -> Unit, onOpen: () -> Unit, streak: Int = 0) {
     val c = MaterialTheme.colors
-    val tint = Color(habit.color)
+    val tint = c.primary
     val done = count >= habit.target
     val haptic = LocalHapticFeedback.current
 
@@ -200,7 +200,7 @@ fun HabitRow(habit: Habit, count: Int, subtitle: String, onCheck: () -> Unit, on
                         enter = scaleIn(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)),
                         exit = scaleOut(),
                     ) {
-                        Icon(Icons.Filled.Check, "Done", tint = Color.White, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Filled.Check, "Done", tint = c.onPrimary, modifier = Modifier.size(20.dp))
                     }
                     if (!done && habit.target > 1) {
                         Text("$count", style = MaterialTheme.typography.labelMedium, color = c.foreground, fontWeight = FontWeight.Bold)
@@ -235,7 +235,7 @@ fun WeekDots(habit: Habit, logs: List<HabitLog>, today: LocalDate = LocalDate.no
                 Box(
                     Modifier.padding(top = 4.dp).size(14.dp).clip(CircleShape).background(
                         when {
-                            d.toEpochDay() in done -> Color(habit.color)
+                            d.toEpochDay() in done -> c.primary
                             due -> c.sunken
                             else -> Color.Transparent
                         },

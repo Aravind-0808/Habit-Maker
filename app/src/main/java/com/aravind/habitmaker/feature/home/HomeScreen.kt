@@ -12,7 +12,7 @@ import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material3.IconButton
-import com.aravind.habitmaker.ui.components.gymChip
+import com.aravind.habitmaker.ui.components.Chip
 import com.aravind.habitmaker.ui.components.Segmented
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -157,7 +157,7 @@ internal fun HomeScreen(go: (String) -> Unit, state: HomeState) {
                 if (hasAccess) "Today · view app usage" else "Allow usage access", Icons.Filled.Smartphone,
                 Modifier.weight(1f), c.secondary, if (hasAccess) ((usage?.totalMs ?: 0L).toFloat() / (s.dailyTargetMin.coerceAtLeast(1) * 60_000L)) else 0f) { go(if (hasAccess) Routes.STATS else Routes.PERMISSIONS) }
             HomeSummaryTile("Daily habits", "$doneCount / ${due.size}", if (due.isEmpty()) "None due today" else "Completed today",
-                Icons.Filled.CheckCircle, Modifier.weight(1f), c.warning, if (due.isEmpty()) 0f else doneCount.toFloat() / due.size) { go(Routes.HABITS) }
+                Icons.Filled.CheckCircle, Modifier.weight(1f), c.primary, if (due.isEmpty()) 0f else doneCount.toFloat() / due.size) { go(Routes.HABITS) }
         }
 
         // One primary graph, with real history and a readable selection for each day.

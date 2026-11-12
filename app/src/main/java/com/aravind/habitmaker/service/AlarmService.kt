@@ -19,6 +19,8 @@ import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import com.aravind.habitmaker.core.notifications.notificationAccent
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -70,6 +72,9 @@ class AlarmService : Service() {
         _ringing.value = ring
         scope.launch {
             settings = app.prefs.current()
+            if (NotificationManagerCompat.from(this@AlarmService).areNotificationsEnabled()) {
+                NotificationManagerCompat.from(this@AlarmService).notify(NOTIF_ID, notification(ring))
+            }
             startSound()
             if (settings.alarmVibrate) startVibration()
             if (settings.alarmFlash) startFlash(settings.alarmFlashMode)
@@ -88,14 +93,17 @@ class AlarmService : Service() {
         return NotificationCompat.Builder(this, App.CHANNEL_ALARM)
             .setSmallIcon(R.drawable.ic_stat_focus)
             .setContentTitle(r.title)
-            .setContentText("Good morning! Tap to open.")
+            .setColor(notificationAccent(this, settings))
+            .setSubText("Wake-up alarm")
+            .setContentText("Your alarm is ringing. Snooze or dismiss below.")
+            .setStyle(NotificationCompat.BigTextStyle().bigText("Your alarm is ringing. Snooze for ${settings.alarmSnoozeMin} minutes, or dismiss to start your day."))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setFullScreenIntent(full, true)
             .setContentIntent(full)
             .setOngoing(true)
-            .addAction(0, "Snooze", action(ACTION_SNOOZE, 11))
-            .addAction(0, "Stop", action(ACTION_STOP, 12))
+            .addAction(0, "Snooze ${settings.alarmSnoozeMin} min", action(ACTION_SNOOZE, 11))
+            .addAction(0, "Dismiss", action(ACTION_STOP, 12))
             .build()
     }
 

@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import com.aravind.habitmaker.core.notifications.notificationAccent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -179,7 +180,7 @@ class RoutineReceiver : BroadcastReceiver() {
         else -> if (b.kind.isStudy) "${formatMinutes(b.minutes())} of focused study. Phone down!" else "Until ${formatClock(b.end)}"
     }
 
-    private fun notify(context: Context, b: RoutineBlock, title: String, text: String) {
+    private suspend fun notify(context: Context, b: RoutineBlock, title: String, text: String) {
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
@@ -189,8 +190,12 @@ class RoutineReceiver : BroadcastReceiver() {
         )
         val n = NotificationCompat.Builder(context, App.CHANNEL_ROUTINE)
             .setSmallIcon(R.drawable.ic_stat_focus)
+            .setColor(notificationAccent(context))
+            .setSubText("Exam Prep · ${formatClock(b.start)}–${formatClock(b.end)}")
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentTitle(title)
             .setContentText(text)
+            .addAction(0, "View routine", open)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open)
             .setAutoCancel(true)

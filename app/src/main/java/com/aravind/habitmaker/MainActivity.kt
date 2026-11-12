@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aravind.habitmaker.core.prefs.Settings
 import com.aravind.habitmaker.core.prefs.ThemeMode
 import com.aravind.habitmaker.ui.RootScreen
+import com.aravind.habitmaker.ui.theme.resolveAppColors
 import com.aravind.habitmaker.ui.theme.HabitMakerTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,14 +28,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by prefs.settings.collectAsStateWithLifecycle(Settings())
             val mode = settings.theme
-            val dark = when (mode) { ThemeMode.DARK -> true; ThemeMode.LIGHT -> false; ThemeMode.SYSTEM -> isSystemInDarkTheme() }
+            val preferredDark = when (mode) { ThemeMode.DARK -> true; ThemeMode.LIGHT -> false; ThemeMode.SYSTEM -> isSystemInDarkTheme() }
+            val dark = resolveAppColors(preferredDark, settings.accent, settings.secondaryAccent, settings.primaryColor, settings.secondaryColor).isDark
             LaunchedEffect(dark) {
                 val style = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
                 else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
             val route by openRoute
-            HabitMakerTheme(mode, settings.accent) { RootScreen(route) }
+            HabitMakerTheme(mode, settings.accent, settings.secondaryAccent, settings.primaryColor, settings.secondaryColor) { RootScreen(route) }
         }
     }
 
