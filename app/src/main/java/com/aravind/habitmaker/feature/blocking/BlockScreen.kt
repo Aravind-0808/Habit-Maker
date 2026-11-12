@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.blocking.BlockerStatus
+import com.aravind.habitmaker.core.focus.FocusTimer
 import com.aravind.habitmaker.core.permissions.Perm
 import com.aravind.habitmaker.core.permissions.Permissions
 import com.aravind.habitmaker.core.prefs.Settings
@@ -48,6 +49,7 @@ import com.aravind.habitmaker.core.util.daysLabel
 import com.aravind.habitmaker.core.util.formatClock
 import com.aravind.habitmaker.core.util.formatTimer
 import com.aravind.habitmaker.navigation.Routes
+import com.aravind.habitmaker.service.BlockerService
 import com.aravind.habitmaker.ui.components.AppButton
 import com.aravind.habitmaker.ui.components.AppCard
 import com.aravind.habitmaker.ui.components.Badge
@@ -78,7 +80,9 @@ fun BlockScreen(go: (String) -> Unit) {
 
     var resumes by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) { resumes++; onPauseOrDispose {} }
-    val serviceOn = remember(resumes) { Permissions.accessibilityOn(context) }
+    val status by BlockerStatus.state.collectAsStateWithLifecycle()
+    // Also re-check when the service stops (e.g. after "Pause blocker").
+    val serviceOn = remember(resumes, status.running) { Permissions.accessibilityOn(context) }
     val now by produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); delay(1000) } }
 
     var blockMin by remember { mutableIntStateOf(30) }
@@ -86,12 +90,12 @@ fun BlockScreen(go: (String) -> Unit) {
     val distracting = rules.count { it.distracting || it.shortsOnly }
     val limited = rules.count { it.dailyLimitMin > 0 }
     val active = s.blockNowUntil > now
-
-    val status by BlockerStatus.state.collectAsStateWithLifecycle()
+    val run by FocusTimer.run.collectAsStateWithLifecycle()
+    val strictNow = run?.strict == true || (s.strict && active)
 
     ScrollScreen("Block") {
         if (!serviceOn) {
-            InlineBanner("Blocking is off. Turn on the Habit Maker accessibility service so blocks can work.", Tone.WARNING)
+            InlineBanner("Blocking is off. Turn on the Habit Maker accessibility service so blocks can work. (Paused it for a banking app? Turn it back on when you're done.)", Tone.WARNING)
             AppButton("Turn on blocking", { go(Routes.PERMISSIONS) }, kind = ButtonKind.SECONDARY)
         } else if (!status.running) {
             InlineBanner(
@@ -171,6 +175,18 @@ fun BlockScreen(go: (String) -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text("Last app seen: ${status.lastApp?.let { app.apps.label(it) } ?: "—"}", style = MaterialTheme.typography.bodySmall, color = c.muted)
                 Text("Last block: ${status.lastBlock?.let { b -> app.apps.label(b.substringBefore(" · ")) + " · " + b.substringAfter(" · ") } ?: "—"}", style = MaterialTheme.typography.bodySmall, color = c.muted)
+                if (status.running) {
+                    Spacer(Modifier.height(12.dp))
+                    Divider()
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        if (strictNow) "Can't pause during a strict session."
+                        else "Banking and UPI apps (like YONO SBI) may refuse to open while the blocker is on. Pause it, use the app, then turn it back on in Accessibility settings.",
+                        style = MaterialTheme.typography.bodySmall, color = if (strictNow) c.warning else c.muted,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    AppButton("Pause blocker", { BlockerService.pause() }, kind = ButtonKind.SECONDARY, enabled = !strictNow)
+                }
             }
         }
 

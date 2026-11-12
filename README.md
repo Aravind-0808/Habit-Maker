@@ -126,6 +126,8 @@ Most features need a special permission that the user turns on in Settings. The 
 | Full-screen intent | Showing the wake-up alarm over the lock screen |
 | Unrestricted battery | Keeping blocking and timers alive in the background |
 
+> **Banking apps:** some banking and UPI apps (for example YONO SBI) refuse to open while any screen-reading accessibility service is on, as protection against malware. Use **Block → Blocker status → Pause blocker**, use the banking app, then turn the blocker back on in Accessibility settings.
+
 > **Note:** Google Play has a strict policy for apps that use the Accessibility API. You'll need a prominent in-app disclosure and a Play Console declaration if you publish this app there.
 
 ## Testing

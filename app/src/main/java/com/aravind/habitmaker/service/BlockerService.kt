@@ -56,6 +56,7 @@ class BlockerService : AccessibilityService() {
 
     override fun onServiceConnected() {
         val app = app
+        instance = this
         BlockerStatus.running(true)
         // When focus, "block now" or a rule changes, check the app that is already open.
         scope.launch { FocusTimer.run.collect { checkCurrent() } }
@@ -277,6 +278,7 @@ class BlockerService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         prompt.hide()
         releaseMedia()
         BlockerStatus.running(false)
@@ -284,12 +286,26 @@ class BlockerService : AccessibilityService() {
         super.onDestroy()
     }
 
-    private companion object {
-        const val SNOOZE_MS = 5 * 60_000L
-        const val APP_NAME = "Habit Maker"
+    companion object {
+        @Volatile private var instance: BlockerService? = null
+
+        /**
+         * Switches the accessibility service off, e.g. so banking apps (which refuse to open while
+         * a screen-reading service is on) can be used. Android only lets the user switch it back on,
+         * in Accessibility settings. Refused during a strict session. True if the service was stopped.
+         */
+        fun pause(): Boolean {
+            val s = instance ?: return false
+            if (s.strictActive()) return false
+            s.disableSelf()
+            return true
+        }
+
+        private const val SNOOZE_MS = 5 * 60_000L
+        private const val APP_NAME = "Habit Maker"
 
         /** Where the app can be uninstalled or the blocker switched off. */
-        val SETTINGS_APPS = setOf(
+        private val SETTINGS_APPS = setOf(
             "com.android.settings",
             "com.google.android.packageinstaller",
             "com.android.packageinstaller",
@@ -299,7 +315,7 @@ class BlockerService : AccessibilityService() {
         )
 
         /** View ids that are only on screen in each app's short-video player. */
-        val SHORTS_VIEWS = mapOf(
+        private val SHORTS_VIEWS = mapOf(
             "com.google.android.youtube" to listOf(
                 "com.google.android.youtube:id/reel_recycler",
                 "com.google.android.youtube:id/reel_player_page_container",
@@ -315,13 +331,13 @@ class BlockerService : AccessibilityService() {
         )
 
         /** Bottom-tab label of the short-video section (English UI). */
-        val SHORTS_TABS = mapOf(
+        private val SHORTS_TABS = mapOf(
             "com.google.android.youtube" to "Shorts",
             "com.instagram.android" to "Reels",
         )
 
         /** Address-bar view ids of common browsers. */
-        val URL_BARS = mapOf(
+        private val URL_BARS = mapOf(
             "com.android.chrome" to "com.android.chrome:id/url_bar",
             "com.chrome.beta" to "com.chrome.beta:id/url_bar",
             "com.brave.browser" to "com.brave.browser:id/url_bar",
