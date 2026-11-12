@@ -117,7 +117,7 @@ fun <T> Segmented(options: List<Pair<T, String>>, selected: T, onSelect: (T) -> 
                     .padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) c.foreground else c.muted)
+                Text(label, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center, color = if (on) c.foreground else c.muted)
             }
         }
     }
@@ -147,7 +147,7 @@ fun DayPicker(mask: Int, onChange: (Int) -> Unit) {
         Dates.SHORT_DAYS.forEachIndexed { i, label ->
             val on = mask and (1 shl i) != 0
             Box(
-                Modifier.size(40.dp).clip(CircleShape)
+                Modifier.weight(1f).height(40.dp).clip(CircleShape)
                     .background(if (on) c.primary else c.sunken)
                     .clickable { onChange(mask xor (1 shl i)) },
                 contentAlignment = Alignment.Center,

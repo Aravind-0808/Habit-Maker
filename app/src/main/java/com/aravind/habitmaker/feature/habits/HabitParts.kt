@@ -1,6 +1,12 @@
 package com.aravind.habitmaker.feature.habits
 
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,10 +16,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -21,10 +29,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aravind.habitmaker.app
@@ -35,8 +52,12 @@ import com.aravind.habitmaker.core.util.Streaks
 import com.aravind.habitmaker.data.db.Habit
 import com.aravind.habitmaker.data.db.HabitLog
 import com.aravind.habitmaker.ui.components.AppCard
+import com.aravind.habitmaker.ui.components.GeometricSparkBurst
 import com.aravind.habitmaker.ui.components.IconTile
+import com.aravind.habitmaker.ui.components.ProgressBar
+import com.aravind.habitmaker.ui.components.bouncyClickable
 import com.aravind.habitmaker.ui.components.habitIcon
+import com.aravind.habitmaker.ui.components.rememberBreathingGlow
 import com.aravind.habitmaker.ui.theme.colors
 import com.aravind.habitmaker.widget.Widgets
 import java.time.LocalDate
@@ -75,38 +96,113 @@ fun Habit.streak(logs: List<HabitLog>, today: LocalDate = LocalDate.now()): Stre
     return Streaks.compute(done, days, first, today)
 }
 
-/** A habit with its icon, a subtitle and a round check button. */
+/** A habit with animated spring micro-interactions, haptics, and particle completion effects. */
 @Composable
 fun HabitRow(habit: Habit, count: Int, subtitle: String, onCheck: () -> Unit, onOpen: () -> Unit, streak: Int = 0) {
     val c = MaterialTheme.colors
     val tint = Color(habit.color)
     val done = count >= habit.target
-    AppCard(onClick = onOpen, padding = 12.dp) {
+    val haptic = LocalHapticFeedback.current
+
+    var checkTrigger by remember { mutableIntStateOf(0) }
+    val flameAlpha = rememberBreathingGlow(minAlpha = 0.65f, maxAlpha = 1f, durationMs = 1800)
+
+    val checkScale by animateFloatAsState(
+        targetValue = if (done) 1.05f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow,
+        ),
+        label = "check_scale",
+    )
+
+    AppCard(onClick = onOpen, padding = 14.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconTile(habitIcon(habit.icon), tint)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(habit.name, style = MaterialTheme.typography.titleSmall, color = c.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = habit.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (done) c.muted else c.foreground,
+                    textDecoration = if (done) TextDecoration.LineThrough else TextDecoration.None,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (streak > 0) {
-                        Icon(Icons.Filled.LocalFireDepartment, null, tint = c.warning, modifier = Modifier.size(14.dp))
-                        Text("$streak  ", style = MaterialTheme.typography.bodySmall, color = c.warning)
+                        Box(
+                            Modifier
+                                .graphicsLayer { alpha = flameAlpha }
+                                .clip(RoundedCornerShape(50))
+                                .background(c.warningSoft)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.LocalFireDepartment, null, tint = c.warning, modifier = Modifier.size(13.dp))
+                                Spacer(Modifier.width(2.dp))
+                                Text("$streak d", style = MaterialTheme.typography.labelSmall, color = c.warning, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.width(6.dp))
                     }
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 1)
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (done) c.success else c.muted,
+                        maxLines = 1,
+                    )
                 }
             }
-            Box(
-                Modifier.size(40.dp).clip(CircleShape)
-                    .background(if (done) tint else c.surface)
-                    .border(2.dp, if (done) tint else c.borderStrong, CircleShape)
-                    .clickable(onClick = onCheck),
-                contentAlignment = Alignment.Center,
-            ) {
-                when {
-                    done -> Icon(Icons.Filled.Check, "Done", tint = Color.White)
-                    habit.target > 1 -> Text("$count", style = MaterialTheme.typography.labelLarge, color = c.foreground)
+
+            Box(contentAlignment = Alignment.Center) {
+                // Spark Burst Effect on Completion
+                GeometricSparkBurst(
+                    triggerKey = if (checkTrigger > 0 && done) checkTrigger else null,
+                    color = tint,
+                    modifier = Modifier.size(44.dp),
+                )
+
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .graphicsLayer {
+                            scaleX = checkScale
+                            scaleY = checkScale
+                        }
+                        .clip(CircleShape)
+                        .background(if (done) tint else c.surface)
+                        .border(1.5.dp, if (done) tint else c.borderStrong, CircleShape)
+                        .bouncyClickable(scaleDown = 0.88f) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            checkTrigger++
+                            onCheck()
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = done,
+                        enter = scaleIn(spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow)),
+                        exit = scaleOut(),
+                    ) {
+                        Icon(Icons.Filled.Check, "Done", tint = Color.White, modifier = Modifier.size(20.dp))
+                    }
+                    if (!done && habit.target > 1) {
+                        Text("$count", style = MaterialTheme.typography.labelMedium, color = c.foreground, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
+        }
+
+        if (habit.target > 1) {
+            Spacer(Modifier.height(8.dp))
+            ProgressBar(
+                fraction = count.toFloat() / habit.target,
+                modifier = Modifier.fillMaxWidth().height(4.dp),
+                color = tint,
+                trackColor = c.sunken,
+            )
         }
     }
 }

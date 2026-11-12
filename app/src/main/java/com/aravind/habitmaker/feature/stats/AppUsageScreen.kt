@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aravind.habitmaker.ui.components.SkeletonScreen
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.util.Dates
 import com.aravind.habitmaker.core.util.formatDuration
@@ -54,7 +55,8 @@ fun AppUsageScreen(pkg: String, onBack: () -> Unit) {
     val label = remember(pkg) { app.apps.label(pkg) }
     val month by produceState<List<DayUsage>?>(null, pkg) { value = app.usage.lastDays(30) }
     var span by remember { mutableIntStateOf(7) }
-    val rules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedRules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+    val rules = loadedRules ?: run { SkeletonScreen(label, onBack); return }
     val rule = rules.firstOrNull { it.packageName == pkg } ?: AppRule(pkg)
     var editLimit by remember { mutableStateOf(false) }
 

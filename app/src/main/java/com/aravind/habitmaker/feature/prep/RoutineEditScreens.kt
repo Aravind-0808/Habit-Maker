@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aravind.habitmaker.ui.components.SkeletonScreen
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.routine.BlockType
 import com.aravind.habitmaker.core.routine.kind
@@ -57,13 +58,15 @@ fun RoutineEditScreen(onBack: () -> Unit, go: (String) -> Unit) {
     val context = LocalContext.current
     val c = MaterialTheme.colors
     val scope = rememberCoroutineScope()
-    val blocks by remember { context.app.db.routine().observeBlocks() }.collectAsStateWithLifecycle(emptyList())
+    val loadedBlocks by remember { context.app.db.routine().observeBlocks() }.collectAsStateWithLifecycle(initialValue = null)
     var confirmReset by remember { mutableStateOf(false) }
 
     if (confirmReset) ConfirmDialog(
         "Remove Exam Prep?", "Your routine, alarms and done / missed history will be deleted.", "Remove",
         { scope.launch { RoutineActions.reset(context); onBack() } }, { confirmReset = false },
     )
+
+    val blocks = loadedBlocks ?: run { SkeletonScreen("Edit routine", onBack); return }
 
     val sorted = blocks.sortedWith(compareBy<RoutineBlock> { it.kind == BlockType.SLEEP }.thenBy { it.start })
     ScrollScreen("Edit routine", onBack = onBack, actions = {

@@ -19,12 +19,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aravind.habitmaker.core.prefs.ThemeMode
 
-/** Redmind design tokens (shared with DataForge): zinc greys, a near-black primary, semantic accents. */
+/** Serene Focus design tokens: deep forest-slate neutral base, primary emerald, indigo focus accents. */
 @Immutable
 data class AppColors(
     val background: Color,
     val subtle: Color,
     val surface: Color,
+    val surfaceElevated: Color,
     val sunken: Color,
     val foreground: Color,
     val muted: Color,
@@ -34,6 +35,8 @@ data class AppColors(
     val primary: Color,
     val primarySoft: Color,
     val onPrimary: Color,
+    val secondary: Color,
+    val onSecondary: Color,
     val success: Color,
     val successSoft: Color,
     val warning: Color,
@@ -51,47 +54,51 @@ data class AppColors(
 val Emerald = Color(0xFF10B981)
 val Rose = Color(0xFFF43F5E)
 val Amber = Color(0xFFF59E0B)
-val Violet = Color(0xFF8B5CF6)
-val Blue = Color(0xFF3B82F6)
+val Violet = Color(0xFF818CF8)
+val Blue = Color(0xFF38BDF8)
+val SageSoft = Color(0xFFA7F3D0)
 
 private val Light = AppColors(
-    background = Color(0xFFFFFFFF), subtle = Color(0xFFFAFAFA), surface = Color(0xFFFFFFFF), sunken = Color(0xFFF4F4F5),
-    foreground = Color(0xFF09090B), muted = Color(0xFF71717A), faint = Color(0xFFA1A1AA),
-    border = Color(0xFFE4E4E7), borderStrong = Color(0xFFD4D4D8),
-    primary = Color(0xFF18181B), primarySoft = Color(0xFFF4F4F5), onPrimary = Color(0xFFFAFAFA),
-    success = Color(0xFF16A34A), successSoft = Color(0xFFF0FDF4),
-    warning = Color(0xFFD97706), warningSoft = Color(0xFFFFFBEB),
-    danger = Color(0xFFDC2626), dangerSoft = Color(0xFFFEF2F2),
-    info = Color(0xFF2563EB), infoSoft = Color(0xFFEFF6FF),
-    heroStart = Color(0xFF18181B), heroEnd = Color(0xFF3F3F46), onHero = Color.White,
+    background = Color(0xFFF6F8F6), subtle = Color(0xFFF0F4F1), surface = Color(0xFFFFFFFF), surfaceElevated = Color(0xFFF0F4F1), sunken = Color(0xFFE5ECE7),
+    foreground = Color(0xFF0E1511), muted = Color(0xFF526157), faint = Color(0xFF718277),
+    border = Color(0xFFD8E1DA), borderStrong = Color(0xFFB5C3B8),
+    primary = Color(0xFF059669), primarySoft = Color(0x1F10B981), onPrimary = Color.White,
+    secondary = Color(0xFF4F46E5), onSecondary = Color.White,
+    success = Color(0xFF059669), successSoft = Color(0x1F059669),
+    warning = Color(0xFFD97706), warningSoft = Color(0x1FD97706),
+    danger = Color(0xFFE11D48), dangerSoft = Color(0x1FE11D48),
+    info = Color(0xFF4F46E5), infoSoft = Color(0x1F4F46E5),
+    heroStart = Color(0xFF0E1511), heroEnd = Color(0xFF1B2820), onHero = Color.White,
     isDark = false,
 )
 
 private val Dark = AppColors(
-    background = Color(0xFF09090B), subtle = Color(0xFF18181B), surface = Color(0xFF09090B), sunken = Color(0xFF18181B),
-    foreground = Color(0xFFFAFAFA), muted = Color(0xFFA1A1AA), faint = Color(0xFF71717A),
-    border = Color(0xFF27272A), borderStrong = Color(0xFF3F3F46),
-    primary = Color(0xFFFAFAFA), primarySoft = Color(0x1FFAFAFA), onPrimary = Color(0xFF18181B),
-    success = Color(0xFF22C55E), successSoft = Color(0x2622C55E),
+    background = Color(0xFF0B1313), subtle = Color(0xFF161D19), surface = Color(0xFF111C1C), surfaceElevated = Color(0xFF1A2727), sunken = Color(0xFF09100C),
+    foreground = Color(0xFFDDE4DD), muted = Color(0xFFBBCABF), faint = Color(0xFF86948A),
+    border = Color(0xFF27332C), borderStrong = Color(0xFF3C4A42),
+    primary = Color(0xFF10B981), primarySoft = Color(0x2610B981), onPrimary = Color(0xFF003824),
+    secondary = Color(0xFF818CF8), onSecondary = Color(0xFF0F172A),
+    success = Color(0xFF10B981), successSoft = Color(0x2610B981),
     warning = Color(0xFFF59E0B), warningSoft = Color(0x26F59E0B),
-    danger = Color(0xFFEF4444), dangerSoft = Color(0x26EF4444),
-    info = Color(0xFF3B82F6), infoSoft = Color(0x263B82F6),
-    heroStart = Color(0xFFF4F4F5), heroEnd = Color(0xFFD4D4D8), onHero = Color(0xFF09090B),
+    danger = Color(0xFFF43F5E), dangerSoft = Color(0x26F43F5E),
+    info = Color(0xFF818CF8), infoSoft = Color(0x26818CF8),
+    heroStart = Color(0xFF1A2727), heroEnd = Color(0xFF111C1C), onHero = Color(0xFFDDE4DD),
     isDark = true,
 )
 
-/** Accent colour themes. ZINC is the original near-black DataForge look. */
+/** Accent colour themes. ZINC defaults to Serene Focus Emerald. */
 enum class Accent(val label: String, val light: Color, val lightEnd: Color, val dark: Color, val darkEnd: Color) {
-    ZINC("Classic", Color(0xFF18181B), Color(0xFF3F3F46), Color(0xFFFAFAFA), Color(0xFFD4D4D8)),
-    EMERALD("Emerald", Color(0xFF059669), Color(0xFF047857), Color(0xFF34D399), Color(0xFF10B981)),
-    BLUE("Ocean", Color(0xFF2563EB), Color(0xFF1D4ED8), Color(0xFF60A5FA), Color(0xFF3B82F6)),
-    VIOLET("Violet", Color(0xFF7C3AED), Color(0xFF6D28D9), Color(0xFFA78BFA), Color(0xFF8B5CF6)),
-    ROSE("Rose", Color(0xFFE11D48), Color(0xFFBE123C), Color(0xFFFB7185), Color(0xFFF43F5E)),
-    AMBER("Sunset", Color(0xFFD97706), Color(0xFFB45309), Color(0xFFFBBF24), Color(0xFFF59E0B)),
+    ZINC("Serene Emerald", Color(0xFF059669), Color(0xFF047857), Color(0xFF10B981), Color(0xFF4EDEA3)),
+    SLATE("Slate Classic", Color(0xFF18181B), Color(0xFF3F3F46), Color(0xFFFAFAFA), Color(0xFFD4D4D8)),
+    EMERALD("Emerald", Color(0xFF059669), Color(0xFF047857), Color(0xFF10B981), Color(0xFF4EDEA3)),
+    BLUE("Ocean", Color(0xFF2563EB), Color(0xFF1D4ED8), Color(0xFF38BDF8), Color(0xFF0284C7)),
+    VIOLET("Indigo Focus", Color(0xFF4F46E5), Color(0xFF4338CA), Color(0xFF818CF8), Color(0xFF6366F1)),
+    ROSE("Rose Shield", Color(0xFFE11D48), Color(0xFFBE123C), Color(0xFFFB7185), Color(0xFFF43F5E)),
+    AMBER("Streak Amber", Color(0xFFD97706), Color(0xFFB45309), Color(0xFFFBBF24), Color(0xFFF59E0B)),
 }
 
-private fun AppColors.withAccent(a: Accent): AppColors = if (a == Accent.ZINC) this else if (isDark) copy(
-    primary = a.dark, primarySoft = a.dark.copy(alpha = 0.15f), onPrimary = Color(0xFF09090B),
+private fun AppColors.withAccent(a: Accent): AppColors = if (a == Accent.ZINC || a == Accent.EMERALD) this else if (isDark) copy(
+    primary = a.dark, primarySoft = a.dark.copy(alpha = 0.15f), onPrimary = if (a == Accent.SLATE) Color(0xFF09090B) else Color(0xFF003824),
     heroStart = a.dark, heroEnd = a.darkEnd, onHero = Color(0xFF09090B),
 ) else copy(
     primary = a.light, primarySoft = a.light.copy(alpha = 0.1f), onPrimary = Color.White,
@@ -122,7 +129,7 @@ private val AppShapes = Shapes(
     small = RoundedCornerShape(8.dp),
     medium = RoundedCornerShape(12.dp),
     large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(24.dp),
 )
 
 @Composable

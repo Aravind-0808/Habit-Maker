@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -41,6 +42,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -104,18 +108,18 @@ fun AppButton(
     fullWidth: Boolean = true,
 ) {
     val c = MaterialTheme.colors
-    val m = (if (fullWidth) modifier.fillMaxWidth() else modifier).height(48.dp)
+    val m = (if (fullWidth) modifier.fillMaxWidth() else modifier).heightIn(min = 48.dp)
     val content: @Composable RowScope.() -> Unit = {
         if (loading) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = LocalContentColorFor(kind))
             Spacer(Modifier.size(8.dp))
-            Text(loadingText ?: text)
+            Text(loadingText ?: text, maxLines = 2, overflow = TextOverflow.Ellipsis)
         } else {
             if (icon != null) { Icon(icon, null, Modifier.size(18.dp)); Spacer(Modifier.size(8.dp)) }
-            Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
-    val shape = MaterialTheme.shapes.medium
+    val shape = RoundedCornerShape(50)
     when (kind) {
         ButtonKind.PRIMARY -> Button(onClick, m, enabled && !loading, shape = shape,
             colors = ButtonDefaults.buttonColors(containerColor = c.primary, contentColor = c.onPrimary, disabledContainerColor = c.primary.copy(alpha = 0.4f), disabledContentColor = c.onPrimary.copy(alpha = 0.8f)), content = content)
@@ -187,6 +191,7 @@ fun AppCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     borderColor: Color? = null,
+    elevated: Boolean = false,
     padding: Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -196,9 +201,9 @@ fun AppCard(
         modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(c.surface)
+            .background(if (elevated) c.surfaceElevated else c.surface)
             .border(1.dp, borderColor ?: c.border, shape)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.bouncyClickable(onClick = onClick) else Modifier)
             .padding(padding),
         content = content,
     )
@@ -232,8 +237,13 @@ fun Badge(text: String, tone: Tone = Tone.NEUTRAL, icon: ImageVector? = null) {
 
 @Composable
 fun ProgressBar(fraction: Float, modifier: Modifier = Modifier, color: Color = MaterialTheme.colors.primary, trackColor: Color = MaterialTheme.colors.sunken) {
+    val animatedFraction by animateFloatAsState(
+        targetValue = fraction.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+        label = "progress_bar_anim",
+    )
     LinearProgressIndicator(
-        progress = { fraction.coerceIn(0f, 1f) },
+        progress = { animatedFraction },
         modifier = modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
         color = color,
         trackColor = trackColor,
@@ -264,9 +274,7 @@ fun Avatar(initials: String, size: Dp = 40.dp, onClick: (() -> Unit)? = null) {
 
 @Composable
 fun LoadingState(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = MaterialTheme.colors.foreground, strokeWidth = 2.5.dp)
-    }
+    SkeletonLoading(modifier)
 }
 
 @Composable
@@ -293,14 +301,32 @@ fun ErrorState(message: String, onRetry: () -> Unit, title: String = "Something 
 
 @Composable
 fun InlineBanner(message: String, tone: Tone = Tone.DANGER, modifier: Modifier = Modifier) {
-    val (fg, bg) = toneColors(tone)
-    Row(
-        modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(bg).border(1.dp, fg.copy(alpha = 0.3f), MaterialTheme.shapes.medium).padding(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(Icons.Filled.ErrorOutline, null, tint = fg, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.size(8.dp))
-        Text(message, style = MaterialTheme.typography.bodyMedium, color = fg)
+    AppNotice(message = message, tone = tone, modifier = modifier)
+}
+
+/** Calm, readable notice shared by permission, routine and blocking screens. */
+@Composable
+fun AppNotice(
+    message: String,
+    tone: Tone = Tone.INFO,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    val c = MaterialTheme.colors
+    val (accent, _) = toneColors(tone)
+    AppCard(modifier = modifier, borderColor = accent.copy(alpha = 0.18f), padding = 16.dp) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+            IconTile(Icons.Filled.ErrorOutline, accent, 32.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (title != null) Text(title, style = MaterialTheme.typography.titleSmall, color = c.foreground, fontWeight = FontWeight.SemiBold)
+                Text(message, style = MaterialTheme.typography.bodySmall, color = c.muted)
+                if (actionLabel != null && onAction != null) TextButton(onAction) {
+                    Text(actionLabel, color = c.primary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
     }
 }
 

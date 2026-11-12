@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aravind.habitmaker.ui.components.SkeletonScreen
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.blocking.BlockPolicy
 import com.aravind.habitmaker.core.prefs.Settings
@@ -139,7 +140,9 @@ fun DistractingAppsScreen(onBack: () -> Unit) {
     val app = LocalContext.current.app
     val c = MaterialTheme.colors
     val scope = rememberCoroutineScope()
-    val rules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedRules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+    val rules = loadedRules ?: run { SkeletonScreen("Distracting apps", onBack); return }
+
     val byPkg = rules.associateBy { it.packageName }
 
     fun toggle(pkg: String) = scope.launch {
@@ -169,7 +172,9 @@ fun AppLimitsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val app = context.app
     val c = MaterialTheme.colors
-    val rules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedRules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+    val rules = loadedRules ?: run { SkeletonScreen("App limits", onBack); return }
+
     val byPkg = rules.associateBy { it.packageName }
     val usage by produceState<Map<String, Long>>(emptyMap()) { value = app.usage.today().byApp.toMap() }
     var editing by remember { mutableStateOf<InstalledApp?>(null) }
@@ -233,7 +238,9 @@ fun ScheduleScreen(onBack: () -> Unit, go: (String) -> Unit) {
     val app = LocalContext.current.app
     val c = MaterialTheme.colors
     val scope = rememberCoroutineScope()
-    val schedules by remember { app.db.schedules().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedSchedules by remember { app.db.schedules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+
+    val schedules = loadedSchedules ?: run { SkeletonScreen("Schedules", onBack); return }
 
     ScrollScreen("Schedules", onBack = onBack, actions = {
         IconButton({ go(Routes.scheduleEdit()) }) { Icon(Icons.Filled.Add, "Add schedule", tint = c.foreground) }
@@ -323,9 +330,11 @@ fun WebsitesScreen(onBack: () -> Unit) {
     val c = MaterialTheme.colors
     val scope = rememberCoroutineScope()
     val s by app.prefs.settings.collectAsStateWithLifecycle(Settings())
-    val sites by remember { app.db.sites().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedSites by remember { app.db.sites().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
     var input by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+
+    val sites = loadedSites ?: run { SkeletonScreen("Websites", onBack); return }
 
     ScrollScreen("Websites", onBack = onBack) {
         AppCard {

@@ -1,5 +1,8 @@
 package com.aravind.habitmaker.feature.blocking
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.graphicsLayer
+import com.aravind.habitmaker.ui.components.rememberBreathingGlow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -39,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aravind.habitmaker.ui.components.SkeletonScreen
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.blocking.BlockerStatus
 import com.aravind.habitmaker.core.focus.FocusTimer
@@ -57,6 +61,7 @@ import com.aravind.habitmaker.ui.components.ButtonKind
 import com.aravind.habitmaker.ui.components.Chip
 import com.aravind.habitmaker.ui.components.Divider
 import com.aravind.habitmaker.ui.components.IconTile
+import com.aravind.habitmaker.ui.components.AppNotice
 import com.aravind.habitmaker.ui.components.InlineBanner
 import com.aravind.habitmaker.ui.components.ScrollScreen
 import com.aravind.habitmaker.ui.components.SectionLabel
@@ -74,9 +79,9 @@ fun BlockScreen(go: (String) -> Unit) {
     val c = MaterialTheme.colors
     val scope = rememberCoroutineScope()
     val s by app.prefs.settings.collectAsStateWithLifecycle(Settings())
-    val rules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(emptyList())
-    val sites by remember { app.db.sites().observeAll() }.collectAsStateWithLifecycle(emptyList())
-    val schedules by remember { app.db.schedules().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedRules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+    val loadedSites by remember { app.db.sites().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+    val loadedSchedules by remember { app.db.schedules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
 
     var resumes by remember { mutableIntStateOf(0) }
     LifecycleResumeEffect(Unit) { resumes++; onPauseOrDispose {} }
@@ -87,6 +92,10 @@ fun BlockScreen(go: (String) -> Unit) {
 
     var blockMin by remember { mutableIntStateOf(30) }
     var strict by remember { mutableStateOf(false) }
+    val rules = loadedRules ?: run { SkeletonScreen("Block"); return }
+    val sites = loadedSites ?: run { SkeletonScreen("Block"); return }
+    val schedules = loadedSchedules ?: run { SkeletonScreen("Block"); return }
+
     val distracting = rules.count { it.distracting || it.shortsOnly }
     val limited = rules.count { it.dailyLimitMin > 0 }
     val active = s.blockNowUntil > now
@@ -95,31 +104,40 @@ fun BlockScreen(go: (String) -> Unit) {
 
     ScrollScreen("Block") {
         if (!serviceOn) {
-            InlineBanner("Blocking is off. Turn on the Habit Maker accessibility service so blocks can work. (Paused it for a banking app? Turn it back on when you're done.)", Tone.WARNING)
-            AppButton("Turn on blocking", { go(Routes.PERMISSIONS) }, kind = ButtonKind.SECONDARY)
-        } else if (!status.running) {
-            InlineBanner(
-                "Android stopped the blocker (after an app update, or the phone closed the app). Open Accessibility → Habit Maker blocker → turn it OFF, then ON again." +
-                    if (Permissions.isXiaomi) " On Xiaomi also allow Autostart and battery \"No restrictions\" so it stays on." else "",
-                Tone.WARNING,
+            AppNotice(
+                title = "Enable your app shield",
+                message = "Allow accessibility access to block distracting apps during focus time.",
+                tone = Tone.WARNING,
+                actionLabel = "Set up blocking",
+                onAction = { go(Routes.PERMISSIONS) },
             )
-            AppButton("Open Accessibility settings", {
-                runCatching { context.startActivity(Permissions.settingsIntent(context, Perm.ACCESSIBILITY)) }
-            }, kind = ButtonKind.SECONDARY)
+        } else if (!status.running) {
+            AppNotice(
+                title = "Reconnect your blocker",
+                message = "Android paused the service. In Accessibility, turn Habit Maker off and on again.",
+                tone = Tone.WARNING,
+                actionLabel = "Open accessibility",
+                onAction = { runCatching { context.startActivity(Permissions.settingsIntent(context, Perm.ACCESSIBILITY)) } },
+            )
             if (Permissions.isXiaomi) AppButton("Xiaomi Autostart", {
                 runCatching { context.startActivity(Permissions.settingsIntent(context, Perm.AUTOSTART)) }
                     .onFailure { go(Routes.PERMISSIONS) }
             }, kind = ButtonKind.GHOST)
         }
 
-        AppCard {
+        val shieldAlpha = rememberBreathingGlow(minAlpha = 0.65f, maxAlpha = 1f, durationMs = 1500)
+        AppCard(elevated = true, borderColor = if (active) c.danger.copy(alpha = 0.5f) else null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(Icons.Filled.Shield, if (active) c.danger else c.foreground)
+                Box(Modifier.graphicsLayer { if (active) alpha = shieldAlpha }) {
+                    IconTile(Icons.Filled.Shield, if (active) c.danger else c.primary)
+                }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Block now", style = MaterialTheme.typography.titleMedium, color = c.foreground)
+                    Text("App Shield", style = MaterialTheme.typography.titleMedium, color = c.foreground)
                     Text(
-                        if (distracting == 0) "Pick your distracting apps first" else "Blocks your $distracting distracting apps",
+                        if (active) "Guarding your cognitive bandwidth"
+                        else if (distracting == 0) "Pick your distracting apps first"
+                        else "Shields your $distracting distracting apps",
                         style = MaterialTheme.typography.bodySmall, color = c.muted,
                     )
                 }

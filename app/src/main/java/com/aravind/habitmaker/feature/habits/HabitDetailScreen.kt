@@ -60,10 +60,11 @@ fun HabitDetailScreen(habitId: Long, onBack: () -> Unit, go: (String) -> Unit) {
     val scope = rememberCoroutineScope()
     val today = remember { LocalDate.now() }
     val habitState by remember { app.db.habits().observe(habitId) }.collectAsStateWithLifecycle(null)
-    val logs by remember { app.db.habitLogs().observeForHabit(habitId) }.collectAsStateWithLifecycle(emptyList())
+    val loadedLogs by remember { app.db.habitLogs().observeForHabit(habitId) }.collectAsStateWithLifecycle(initialValue = null)
     var confirmDelete by remember { mutableStateOf(false) }
 
     val habit = habitState ?: run { ScrollScreen("Habit", onBack = onBack) { LoadingState() }; return }
+    val logs = loadedLogs ?: run { ScrollScreen(habit.name, onBack = onBack) { LoadingState() }; return }
     val tint = Color(habit.color)
     val counts = logs.associate { it.day to it.count }
     val info = habit.streak(logs, today)

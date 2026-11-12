@@ -64,8 +64,10 @@ fun ShortVideoAppsCard() {
     val c = MaterialTheme.colors
     val scope = rememberCoroutineScope()
     val installed by produceState<Set<String>?>(null) { value = app.apps.list().map { it.packageName }.toSet() }
-    val rules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedRules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+    val rules = loadedRules ?: run { LoadingState(); return }
     val byPkg = rules.associateBy { it.packageName }
+    if (installed == null) { LoadingState(); return }
     val apps = SHORT_VIDEO_APPS.filterKeys { installed?.contains(it) == true }
     if (apps.isEmpty()) return
 
@@ -99,7 +101,8 @@ fun AppChecklist() {
     val c = MaterialTheme.colors
     val scope = rememberCoroutineScope()
     val all by produceState<List<InstalledApp>?>(null) { value = app.apps.list() }
-    val rules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(emptyList())
+    val loadedRules by remember { app.db.appRules().observeAll() }.collectAsStateWithLifecycle(initialValue = null)
+    val rules = loadedRules ?: run { LoadingState(); return }
     val byPkg = rules.associateBy { it.packageName }
     var query by remember { mutableStateOf("") }
     var showAll by remember { mutableStateOf(false) }

@@ -1,5 +1,11 @@
 package com.aravind.habitmaker.navigation
 
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,6 +24,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.aravind.habitmaker.app
+import com.aravind.habitmaker.feature.home.HomeState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -65,18 +76,26 @@ private val TABS = listOf(
     Tab(Routes.STATS, "Stats", Icons.Filled.BarChart),
 )
 
-private fun NavHostController.tab(route: String) = navigate(route) {
-    popUpTo(graph.findStartDestination().id) { saveState = true }
-    launchSingleTop = true
-    restoreState = true
+private fun NavHostController.tab(route: String) {
+    if (currentDestination?.route == route) return
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
 }
 
 /** Bottom tabs and every page of the app. [openRoute] jumps to a tab (from a notification). */
 @Composable
 fun AppShell(openRoute: String? = null) {
+    val app = LocalContext.current.app
+    val scope = rememberCoroutineScope()
+    val homeState = remember(app, scope) { HomeState(app, scope) }
+    // Start directly at a notification's tab instead of composing Home first.
+    val startRoute = remember { openRoute?.takeIf { it in Routes.TABS } ?: Routes.HOME }
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
-    val route = entry?.destination?.route
+    val route = entry?.destination?.route ?: startRoute
     val c = MaterialTheme.colors
     val back: () -> Unit = { nav.popBackStack() }
     val go: (String) -> Unit = { r -> if (r in Routes.TABS) nav.tab(r) else nav.navigate(r) }
@@ -88,14 +107,20 @@ fun AppShell(openRoute: String? = null) {
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
             if (route in Routes.TABS) {
-                NavigationBar(containerColor = c.surface, tonalElevation = 0.dp) {
+                NavigationBar(containerColor = c.surface, tonalElevation = 2.dp) {
                     TABS.forEach { t ->
+                        val selected = route == t.route
                         NavigationBarItem(
-                            selected = route == t.route, onClick = { nav.tab(t.route) },
-                            icon = { Icon(t.icon, null) }, label = { Text(t.label) },
+                            selected = selected,
+                            onClick = { nav.tab(t.route) },
+                            icon = { Icon(t.icon, null) },
+                            label = { Text(t.label) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = c.foreground, selectedTextColor = c.foreground, indicatorColor = c.sunken,
-                                unselectedIconColor = c.faint, unselectedTextColor = c.faint,
+                                selectedIconColor = c.primary,
+                                selectedTextColor = c.primary,
+                                indicatorColor = c.primarySoft,
+                                unselectedIconColor = c.faint,
+                                unselectedTextColor = c.faint,
                             ),
                         )
                     }
@@ -103,8 +128,32 @@ fun AppShell(openRoute: String? = null) {
             }
         },
     ) { pad ->
-        NavHost(nav, startDestination = Routes.HOME, modifier = Modifier.fillMaxSize().padding(pad)) {
-            composable(Routes.HOME) { HomeScreen(go) }
+        NavHost(
+            navController = nav,
+            startDestination = startRoute,
+            modifier = Modifier.fillMaxSize().padding(pad),
+            enterTransition = {
+                if (initialState.destination.route in Routes.TABS && targetState.destination.route in Routes.TABS) {
+                    fadeIn(tween(180))
+                } else slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 12 } + fadeIn(tween(180))
+            },
+            exitTransition = {
+                if (initialState.destination.route in Routes.TABS && targetState.destination.route in Routes.TABS) {
+                    fadeOut(tween(140))
+                } else slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) { -it / 24 } + fadeOut(tween(140))
+            },
+            popEnterTransition = {
+                if (initialState.destination.route in Routes.TABS && targetState.destination.route in Routes.TABS) {
+                    fadeIn(tween(180))
+                } else slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { -it / 24 } + fadeIn(tween(180))
+            },
+            popExitTransition = {
+                if (initialState.destination.route in Routes.TABS && targetState.destination.route in Routes.TABS) {
+                    fadeOut(tween(140))
+                } else slideOutHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 12 } + fadeOut(tween(140))
+            },
+        ) {
+            composable(Routes.HOME) { HomeScreen(go, homeState) }
             composable(Routes.PREP) { PrepScreen(go) }
             composable(Routes.HABITS) { HabitsScreen(go, onBack = back) }
             composable(Routes.PREP_SETUP) {

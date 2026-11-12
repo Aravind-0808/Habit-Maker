@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aravind.habitmaker.ui.components.SkeletonScreen
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.routine.DayResult
 import com.aravind.habitmaker.core.routine.DayStatus
@@ -52,10 +53,13 @@ import java.time.format.DateTimeFormatter
 fun PrepCalendarScreen(onBack: () -> Unit) {
     val app = LocalContext.current.app
     val c = MaterialTheme.colors
-    val blocks by remember { app.db.routine().observeBlocks() }.collectAsStateWithLifecycle(emptyList())
-    val logs by remember { app.db.routine().observeLogsSince(0) }.collectAsStateWithLifecycle(emptyList())
+    val loadedBlocks by remember { app.db.routine().observeBlocks() }.collectAsStateWithLifecycle(initialValue = null)
+    val loadedLogs by remember { app.db.routine().observeLogsSince(0) }.collectAsStateWithLifecycle(initialValue = null)
     var month by remember { mutableStateOf(YearMonth.now()) }
     val today = LocalDate.now()
+
+    val blocks = loadedBlocks ?: run { SkeletonScreen("Prep calendar", onBack); return }
+    val logs = loadedLogs ?: run { SkeletonScreen("Prep calendar", onBack); return }
 
     val first = month.atDay(1)
     val last = month.atEndOfMonth()

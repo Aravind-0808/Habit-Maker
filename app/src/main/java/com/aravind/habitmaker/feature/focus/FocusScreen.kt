@@ -4,7 +4,17 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.graphicsLayer
+import com.aravind.habitmaker.ui.components.AnimatedNumber
+import com.aravind.habitmaker.ui.components.rememberBreathingGlow
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +22,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,7 +35,9 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -52,6 +65,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aravind.habitmaker.ui.components.SkeletonScreen
+import kotlinx.coroutines.flow.combine
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.focus.FocusRun
 import com.aravind.habitmaker.core.focus.FocusTimer
@@ -97,7 +112,7 @@ import java.time.format.DateTimeFormatter
 private val PRESETS = listOf(15, 25, 45, 60, 90)
 
 /** Set up and run a focus session, then see the history. */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FocusScreen() {
     val context = LocalContext.current
@@ -107,11 +122,14 @@ fun FocusScreen() {
     val s by app.prefs.settings.collectAsStateWithLifecycle(Settings())
     val run by FocusTimer.run.collectAsStateWithLifecycle()
     val result by FocusTimer.result.collectAsStateWithLifecycle()
-    val sessions by remember { app.db.focus().observeRecent(30) }.collectAsStateWithLifecycle(emptyList())
-    val plan by remember { app.db.routine().observePlan() }.collectAsStateWithLifecycle(null)
-    val blocks by remember { app.db.routine().observeBlocks() }.collectAsStateWithLifecycle(emptyList())
+    val loadedFocus by remember(app) {
+        combine(app.db.focus().observeRecent(30), app.db.routine().observePlan(), app.db.routine().observeBlocks()) {
+            sessions, plan, blocks -> Triple(sessions, plan, blocks)
+        }
+    }.collectAsStateWithLifecycle(initialValue = null)
     val clock by produceState(LocalTime.now()) { while (true) { value = LocalTime.now(); delay(15_000) } }
     val minute = clock.hour * 60 + clock.minute
+    val (sessions, plan, blocks) = loadedFocus ?: run { SkeletonScreen("Focus"); return }
     val todays = if (plan != null) blocks.on(LocalDate.now()) else emptyList()
     val current = todays.current(minute)
     val upcoming = todays.next(minute)
@@ -126,47 +144,51 @@ fun FocusScreen() {
         val routine = r.blockId != null
         // In the routine: the next block is what comes after the one that just ended.
         val nextBlock = upcoming
-        AlertDialog(
+        val breakBlock = nextBlock?.takeIf { (it.kind == BlockType.BREAK || it.kind == BlockType.MEAL) && it.start <= minute + 1 }
+            ?: current?.takeIf { it.kind == BlockType.BREAK || it.kind == BlockType.MEAL }
+        ModalBottomSheet(
             onDismissRequest = { FocusTimer.clearResult() },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = c.surface,
-            icon = { IconTile(if (r.wasBreak) Icons.Filled.Timer else Icons.Filled.Coffee, Violet, 48.dp) },
-            title = { Text(if (r.wasBreak) "Break's over" else if (r.completed) "Session complete!" else "Session stopped", style = MaterialTheme.typography.titleLarge) },
-            text = {
-                Text(
-                    when {
-                        r.wasBreak && nextBlock != null -> "Next: ${nextBlock.title} at ${formatClock(nextBlock.start)}."
-                        r.wasBreak -> "Ready for another round?"
-                        routine && r.completed -> "You focused for ${formatMinutes(r.minutes)} and it's marked done. Time to take a break — stand up, drink water, rest your eyes."
-                        else -> "You focused for ${formatMinutes(r.minutes)}."
-                    },
-                    color = c.muted,
-                )
-            },
-            confirmButton = {
-                val breakBlock = nextBlock?.takeIf { (it.kind == BlockType.BREAK || it.kind == BlockType.MEAL) && it.start <= minute + 1 }
-                    ?: current?.takeIf { it.kind == BlockType.BREAK || it.kind == BlockType.MEAL }
-                TextButton({
-                    FocusTimer.clearResult()
-                    when {
-                        r.wasBreak && current != null && current.kind.isStudy ->
-                            FocusTimer.start(context, minutesLeft(current, minute), current.title, strict = plan?.strictFocus == true, blockId = current.id)
-                        r.wasBreak -> FocusTimer.start(context, minutes.coerceAtLeast(1), label, strict = strict)
-                        breakBlock != null -> FocusTimer.start(context, minutesLeft(breakBlock, minute), breakBlock.title, isBreak = true, blockId = breakBlock.id)
-                        else -> FocusTimer.start(context, s.breakMin, "Break", isBreak = true)
-                    }
-                }) {
+        ) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                IconTile(if (r.wasBreak) Icons.Filled.Coffee else Icons.Filled.Timer, c.primary, 48.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (r.wasBreak) "Ready for another round?" else if (r.completed) "Focus session complete" else "Session ended",
+                        style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = c.foreground)
                     Text(
                         when {
-                            r.wasBreak -> "Start focus"
-                            breakBlock != null -> "Start break (${formatMinutes(minutesLeft(breakBlock, minute))})"
-                            else -> "Take a ${s.breakMin} min break"
-                        },
-                        color = c.foreground, fontWeight = FontWeight.SemiBold,
+                            r.wasBreak && nextBlock != null -> "Up next: ${nextBlock.title} at ${formatClock(nextBlock.start)}."
+                            r.wasBreak -> "Your break is over. Start again when you're ready."
+                            r.minutes == 0 -> "This session ended before a full minute. Start again whenever you're ready."
+                            routine && r.completed -> "${formatMinutes(r.minutes)} focused. Your study block is marked done. Take a moment to recharge."
+                            else -> "You focused for ${formatMinutes(r.minutes)}. Every bit of progress counts."
+                        }, style = MaterialTheme.typography.bodyMedium, color = c.muted,
                     )
                 }
-            },
-            dismissButton = { TextButton({ FocusTimer.clearResult() }) { Text("Done", color = c.muted) } },
-        )
+                if (r.completed || r.wasBreak) {
+                    AppButton(
+                        when {
+                            r.wasBreak -> "Start focus"
+                            breakBlock != null -> "Start break · ${formatMinutes(minutesLeft(breakBlock, minute))}"
+                            else -> "Take a ${s.breakMin} min break"
+                        },
+                        {
+                            FocusTimer.clearResult()
+                            when {
+                                r.wasBreak && current != null && current.kind.isStudy -> FocusTimer.start(context, minutesLeft(current, minute), current.title, strict = plan?.strictFocus == true, blockId = current.id)
+                                r.wasBreak -> FocusTimer.start(context, minutes.coerceAtLeast(1), label, strict = strict)
+                                breakBlock != null -> FocusTimer.start(context, minutesLeft(breakBlock, minute), breakBlock.title, isBreak = true, blockId = breakBlock.id)
+                                else -> FocusTimer.start(context, s.breakMin, "Break", isBreak = true)
+                            }
+                        },
+                    )
+                    AppButton("Done for now", { FocusTimer.clearResult() }, kind = ButtonKind.SECONDARY)
+                } else {
+                    AppButton("Back to focus", { FocusTimer.clearResult() })
+                }
+            }
+        }
     }
 
     ScrollScreen("Focus") {
@@ -181,24 +203,34 @@ fun FocusScreen() {
                     else FocusTimer.start(context, minutesLeft(current, minute), current.title, isBreak = true, blockId = current.id)
                 }
             }
-            AppCard {
-                Text("Focus for", style = MaterialTheme.typography.labelMedium, color = c.muted)
-                Text(formatMinutes(minutes), style = MaterialTheme.typography.headlineMedium, color = c.foreground)
-                Spacer(Modifier.height(12.dp))
+            AppCard(elevated = true, padding = 18.dp) {
+                Text("FOCUS MODE & DURATION", style = MaterialTheme.typography.labelSmall, color = c.primary, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text(formatMinutes(minutes), style = MaterialTheme.typography.headlineMedium, color = c.foreground, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(14.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PRESETS.forEach { m -> Chip("$m min", minutes == m, { minutes = m }) }
+                    listOf(
+                        25 to "Pomodoro (25m)",
+                        5 to "Short Break (5m)",
+                        15 to "Long Break (15m)",
+                        60 to "Deep Work (60m)",
+                        90 to "Sprint (90m)",
+                    ).forEach { (m, title) ->
+                        Chip(title, minutes == m, { minutes = m })
+                    }
                 }
+                Spacer(Modifier.height(8.dp))
                 Slider(
                     minutes.toFloat(), { minutes = it.toInt().coerceAtLeast(1) }, valueRange = 1f..180f,
                     colors = SliderDefaults.colors(thumbColor = c.primary, activeTrackColor = c.primary, inactiveTrackColor = c.sunken),
                 )
-                AppTextField(label, { label = it }, "What are you working on?", placeholder = "Optional")
-                Spacer(Modifier.height(12.dp))
+                AppTextField(label, { label = it }, "Focus Subject / Task", placeholder = "e.g. Organic Chemistry • Problem Set #4")
+                Spacer(Modifier.height(14.dp))
                 ToggleRow("Block distracting apps", "Uses your list from the Block tab", s.blockDuringFocus) { on ->
                     scope.launch { app.prefs.update { it.copy(blockDuringFocus = on) } }
                 }
                 ToggleRow("Strict mode", "You can't stop the session early", strict) { strict = it }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
                 AppButton("Start focus", {
                     if (Build.VERSION.SDK_INT >= 33) notif.launch(Manifest.permission.POST_NOTIFICATIONS)
                     FocusTimer.start(context, minutes, label, strict = strict)
@@ -254,29 +286,49 @@ private fun Running(r: FocusRun, block: RoutineBlock?, upcoming: RoutineBlock?) 
     val c = MaterialTheme.colors
     val now by produceState(System.currentTimeMillis(), r) { while (true) { value = System.currentTimeMillis(); delay(250) } }
     val left = r.remainingMs(now)
-    val progress = 1f - left.toFloat() / r.totalMs.coerceAtLeast(1)
-    val ring = if (r.isBreak) c.success else c.foreground
+    val rawProgress = (1f - left.toFloat() / r.totalMs.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val animatedProgress by animateFloatAsState(
+        targetValue = rawProgress,
+        animationSpec = tween(durationMillis = 300, easing = LinearEasing),
+        label = "timer_sweep",
+    )
+    val ringColor = if (r.isBreak) c.success else c.primary
+    val ambientGlow = rememberBreathingGlow(minAlpha = 0.5f, maxAlpha = 0.95f, durationMs = 2600)
 
-    AppCard {
+    AppCard(elevated = true, padding = 20.dp) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(r.label, style = MaterialTheme.typography.titleMedium, color = c.foreground)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                Text(r.label, style = MaterialTheme.typography.titleMedium, color = c.foreground, fontWeight = FontWeight.SemiBold)
                 if (block != null) { Spacer(Modifier.width(8.dp)); Badge("Exam Prep", Tone.INFO) }
                 if (r.strict) { Spacer(Modifier.width(8.dp)); Badge("Strict", Tone.WARNING, Icons.Filled.Lock) }
             }
-            Spacer(Modifier.height(20.dp))
-            Box(Modifier.size(240.dp), contentAlignment = Alignment.Center) {
-                val track = c.sunken
-                Canvas(Modifier.size(240.dp)) {
-                    val stroke = 14.dp.toPx()
+            Spacer(Modifier.height(24.dp))
+            Box(Modifier.widthIn(max = 240.dp).fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
+                val track = c.surfaceElevated
+                Canvas(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            if (!r.paused) alpha = ambientGlow
+                        }
+                ) {
+                    val stroke = 12.dp.toPx()
                     val inset = stroke / 2
                     val arc = Size(size.width - stroke, size.height - stroke)
                     drawArc(track, 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
-                    drawArc(ring, -90f, 360f * progress, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
+                    drawArc(ringColor, -90f, 360f * animatedProgress, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(formatTimer(left / 1000), style = MaterialTheme.typography.headlineMedium.copy(fontSize = 48.sp), color = c.foreground)
-                    Text(if (r.paused) "Paused" else if (r.isBreak) "Break" else "Focus", style = MaterialTheme.typography.bodyMedium, color = c.muted)
+                    AnimatedNumber(formatTimer(left / 1000)) { timeStr ->
+                        Text(timeStr, style = MaterialTheme.typography.headlineMedium.copy(fontSize = 46.sp, fontWeight = FontWeight.Bold), color = c.foreground)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (r.paused) "PAUSED" else if (r.isBreak) "BREAK TIME" else "DEEP FOCUS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (r.paused) c.muted else ringColor,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
             if (r.isBreak) {

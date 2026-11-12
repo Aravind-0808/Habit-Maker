@@ -1,13 +1,15 @@
 package com.aravind.habitmaker.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
+import com.aravind.habitmaker.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +28,6 @@ import com.aravind.habitmaker.feature.auth.AuthFlow
 import com.aravind.habitmaker.feature.onboarding.OnboardingScreen
 import com.aravind.habitmaker.feature.permissions.PermissionsScreen
 import com.aravind.habitmaker.navigation.AppShell
-import com.aravind.habitmaker.ui.components.IconTile
 import com.aravind.habitmaker.ui.theme.colors
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -60,7 +61,7 @@ fun SplashScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        IconTile(Icons.Filled.CheckCircle, c.foreground, 72.dp)
+        Image(painterResource(R.drawable.app_logo), contentDescription = "Habit Maker logo", modifier = Modifier.size(96.dp))
         Spacer(Modifier.height(16.dp))
         Text("Habit Maker", style = MaterialTheme.typography.headlineMedium, color = c.foreground)
     }
