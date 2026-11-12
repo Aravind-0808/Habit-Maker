@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [Habit::class, HabitLog::class, FocusSession::class, AppRule::class, BlockedSite::class, BlockSchedule::class,
         ExamPlan::class, RoutineBlock::class, RoutineLog::class],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,7 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "habitmaker.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
 
         /** v2: several block schedules (was one schedule in settings). */
@@ -55,6 +55,16 @@ abstract class AppDatabase : RoomDatabase() {
                     "CREATE TABLE IF NOT EXISTS `routine_logs` (`day` INTEGER NOT NULL, `blockId` INTEGER NOT NULL, " +
                         "`status` INTEGER NOT NULL, PRIMARY KEY(`day`, `blockId`))",
                 )
+            }
+        }
+
+        /** v5: optional habit timing, preserving all existing habits and logs. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `timing` TEXT NOT NULL DEFAULT 'ANYTIME'")
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `startMinute` INTEGER")
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `endMinute` INTEGER")
+                db.execSQL("ALTER TABLE `habits` ADD COLUMN `intervalMin` INTEGER")
             }
         }
 

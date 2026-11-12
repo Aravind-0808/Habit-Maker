@@ -21,6 +21,10 @@ data class Habit(
     val target: Int = 1,
     val createdAt: Long = System.currentTimeMillis(),
     val archived: Boolean = false,
+    @ColumnInfo(defaultValue = "'ANYTIME'") val timing: String = "ANYTIME",
+    val startMinute: Int? = null,
+    val endMinute: Int? = null,
+    val intervalMin: Int? = null,
 )
 
 /** How many times a habit was done on a day ([day] = LocalDate.toEpochDay()). */

@@ -16,6 +16,7 @@ import com.aravind.habitmaker.MainActivity
 import com.aravind.habitmaker.R
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.routine.RoutineAlarms
+import com.aravind.habitmaker.core.util.formatClock
 import com.aravind.habitmaker.core.util.Dates
 import com.aravind.habitmaker.data.db.Habit
 import kotlinx.coroutines.CoroutineScope
@@ -28,9 +29,7 @@ import java.time.ZoneId
 object HabitReminders {
     fun schedule(context: Context, habit: Habit) {
         cancel(context, habit.id)
-        val minute = habit.reminderMinute ?: return
-        if (habit.archived || habit.days == 0) return
-        val next = nextTime(habit.days, minute, LocalDateTime.now()) ?: return
+        val next = nextTime(habit, LocalDateTime.now()) ?: return
         val at = next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val am = context.getSystemService(AlarmManager::class.java)
         val pi = pending(context, habit.id)
@@ -48,6 +47,25 @@ object HabitReminders {
     suspend fun rescheduleAll(context: Context) {
         val enabled = context.app.prefs.current().remindersEnabled
         context.app.db.habits().all().forEach { if (enabled) schedule(context, it) else cancel(context, it.id) }
+    }
+
+    /** One pending alarm per habit; repeat habits advance to the next slot in their window. */
+    fun nextTime(habit: Habit, now: LocalDateTime): LocalDateTime? {
+        val minute = habit.reminderMinute ?: return null
+        if (habit.archived || habit.days == 0 || minute !in 0..1439) return null
+        if (habit.timing != "REPEAT") return nextTime(habit.days, minute, now)
+        val end = habit.endMinute ?: return null
+        val interval = habit.intervalMin ?: return null
+        if (end !in minute..1439 || interval <= 0) return null
+        for (offset in 0..7) {
+            val date = now.toLocalDate().plusDays(offset.toLong())
+            if (habit.days and Dates.bit(date.dayOfWeek) == 0) continue
+            for (slot in minute..end step interval) {
+                val at = date.atTime(slot / 60, slot % 60)
+                if (at.isAfter(now)) return at
+            }
+        }
+        return null
     }
 
     /** The next time at [minute] on one of [days] strictly after [now]. */
@@ -79,7 +97,11 @@ class ReminderReceiver : BroadcastReceiver() {
             try {
                 val app = context.app
                 val habit = app.db.habits().get(id) ?: return@launch
-                if (!app.prefs.current().remindersEnabled) return@launch
+                if (!app.prefs.current().remindersEnabled || habit.archived || habit.reminderMinute == null) return@launch
+                if (habit.days and Dates.bit(java.time.LocalDate.now().dayOfWeek) == 0) {
+                    HabitReminders.schedule(context, habit)
+                    return@launch
+                }
                 val done = app.db.habitLogs().forDay(Dates.today()).firstOrNull { it.habitId == id }?.count ?: 0
                 if (done < habit.target) notify(context, habit)
                 HabitReminders.schedule(context, habit)
@@ -100,7 +122,11 @@ class ReminderReceiver : BroadcastReceiver() {
         val n = NotificationCompat.Builder(context, App.CHANNEL_REMINDERS)
             .setSmallIcon(R.drawable.ic_stat_habit)
             .setContentTitle(habit.name)
-            .setContentText("Time for your habit. Keep the streak going!")
+            .setContentText(when {
+                habit.timing == "WINDOW" && habit.endMinute != null -> "Your time: ${formatClock(habit.startMinute ?: habit.reminderMinute ?: 0)} – ${formatClock(habit.endMinute)}."
+                habit.timing == "REPEAT" -> "Time for your next check-in. Log it in Habit Maker."
+                else -> "Time for your habit. Keep the streak going!"
+            })
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()

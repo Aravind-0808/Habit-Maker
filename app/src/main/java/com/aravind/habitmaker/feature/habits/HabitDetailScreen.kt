@@ -82,10 +82,11 @@ fun HabitDetailScreen(habitId: Long, onBack: () -> Unit, go: (String) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconTile(habitIcon(habit.icon), tint, 48.dp)
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(habit.name, style = MaterialTheme.typography.titleMedium, color = c.foreground)
-                    val reminder = habit.reminderMinute?.let { " · reminder ${formatClock(it)}" } ?: ""
-                    Text(daysLabel(habit.days) + reminder, style = MaterialTheme.typography.bodySmall, color = c.muted)
+                    Text(daysLabel(habit.days), style = MaterialTheme.typography.bodySmall, color = c.muted)
+                    Text(habit.timingLabel(), style = MaterialTheme.typography.bodyMedium, color = c.foreground)
+                    Text(if (habit.reminderMinute == null) "Reminders off" else if (habit.timing == "REPEAT") "Reminder every ${habit.intervalMin} min" else "Reminder at ${formatClock(habit.reminderMinute)}", style = MaterialTheme.typography.bodySmall, color = c.muted)
                 }
             }
             Spacer(Modifier.height(16.dp))

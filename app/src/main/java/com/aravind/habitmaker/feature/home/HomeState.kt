@@ -33,7 +33,7 @@ internal class HomeState(private val app: App, private val scope: CoroutineScope
     val data = combine(
         app.db.habits().observeActive(),
         app.db.habitLogs().observeSince(0),
-        app.db.focus().observeSince(Dates.startOfToday()),
+        app.db.focus().observeSince(Dates.range(java.time.LocalDate.now().minusDays(6)).first),
         app.db.routine().observePlan(),
         app.db.routine().observeBlocks(),
     ) { habits, logs, focus, plan, routine -> HomeData(habits, logs, focus, plan, routine) }

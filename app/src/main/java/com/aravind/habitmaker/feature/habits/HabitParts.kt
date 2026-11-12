@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aravind.habitmaker.app
 import com.aravind.habitmaker.core.reminders.HabitReminders
+import com.aravind.habitmaker.core.util.formatClock
 import com.aravind.habitmaker.core.util.Dates
 import com.aravind.habitmaker.core.util.StreakInfo
 import com.aravind.habitmaker.core.util.Streaks
@@ -90,6 +91,17 @@ object HabitActions {
 
 fun Habit.dueOn(day: LocalDate) = days and Dates.bit(day.dayOfWeek) != 0
 
+fun Habit.timingLabel(): String {
+    val start = startMinute ?: reminderMinute
+    return when {
+        timing == "REPEAT" && start != null && endMinute != null -> "$target times · ${formatClock(start)}–${formatClock(endMinute)}"
+        timing == "WINDOW" && start != null && endMinute != null -> "${formatClock(start)}–${formatClock(endMinute)}"
+        start != null -> formatClock(start)
+        target > 1 -> "$target times per day · Anytime"
+        else -> "Anytime"
+    }
+}
+
 fun Habit.streak(logs: List<HabitLog>, today: LocalDate = LocalDate.now()): StreakInfo {
     val done = logs.filter { it.habitId == id && it.count >= target }.map { it.day }.toSet()
     val first = minOf(Dates.dayOf(createdAt), done.minOrNull()?.let { LocalDate.ofEpochDay(it) } ?: today)
@@ -129,7 +141,9 @@ fun HabitRow(habit: Habit, count: Int, subtitle: String, onCheck: () -> Unit, on
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(4.dp))
+                Text(habit.timingLabel(), style = MaterialTheme.typography.bodySmall, color = c.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (streak > 0) {
                         Box(
